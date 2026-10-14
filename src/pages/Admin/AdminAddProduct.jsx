@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -6,20 +6,29 @@ import {
   PlusIcon,
   XMarkIcon,
   PhotoIcon,
-  TrashIcon,
-  ListBulletIcon,
   BoldIcon,
   ItalicIcon,
+  ListBulletIcon,
   DocumentTextIcon,
+  EyeIcon,
+  InformationCircleIcon,
+  CurrencyRupeeIcon,
+  TagIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { adminCreateProduct } from '../../services/productService';
-import { getCategories } from '../../services/productService';
+import {
+  adminCreateProduct,
+  getCategories,
+} from '../../services/productService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
+// ==========================================
+// SCHEMA (unchanged)
+// ==========================================
 const productSchema = yup.object().shape({
   name: yup
     .string()
@@ -58,34 +67,67 @@ const productSchema = yup.object().shape({
 });
 
 const GEMSTONE_OPTIONS = [
-  'Diamond',
-  'Ruby',
-  'Sapphire',
-  'Emerald',
-  'Cubic Zirconia',
-  'Pearl',
-  'Amethyst',
-  'Topaz',
-  'Opal',
-  'Aquamarine',
-  'Garnet',
-  'Peridot',
-  'Turquoise',
-  'Moonstone',
-  'Tanzanite',
-  'None',
-  'Other',
+  'Diamond', 'Ruby', 'Sapphire', 'Emerald', 'Cubic Zirconia', 'Pearl',
+  'Amethyst', 'Topaz', 'Opal', 'Aquamarine', 'Garnet', 'Peridot',
+  'Turquoise', 'Moonstone', 'Tanzanite', 'None', 'Other',
 ];
+
+const MATERIALS = [
+  'Gold', 'Silver', 'Platinum', 'Rose Gold', 'White Gold', 'Brass',
+  'Stainless Steel', 'Titanium',
+];
+
+// ==========================================
+// SECTION WRAPPER
+// ==========================================
+const FormSection = ({ icon: Icon, title, description, children }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6">
+    <div className="flex items-start gap-3 mb-5">
+      <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+        <Icon className="w-5 h-5 text-amber-600" />
+      </div>
+      <div>
+        <h2 className="text-base md:text-lg font-bold text-gray-900">{title}</h2>
+        {description && (
+          <p className="text-xs md:text-sm text-gray-500 mt-0.5">{description}</p>
+        )}
+      </div>
+    </div>
+    {children}
+  </div>
+);
+
+// ==========================================
+// FIELD WRAPPER
+// ==========================================
+const Field = ({ label, required, error, hint, children }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    {children}
+    {hint && !error && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+    {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+  </div>
+);
+
+const inputClass = (hasError) =>
+  `w-full px-3.5 py-2.5 bg-gray-50 border rounded-xl text-sm transition-all outline-none focus:bg-white focus:ring-2 ${
+    hasError
+      ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
+      : 'border-gray-200 focus:border-amber-400 focus:ring-amber-100'
+  }`;
 
 const AdminAddProduct = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [images, setImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
-  const [uploading, setUploading] = useState(false);
   const [showCustomGemstone, setShowCustomGemstone] = useState(false);
-  const [descriptionTab, setDescriptionTab] = useState('write'); // 'write' | 'preview'
+  const [descriptionTab, setDescriptionTab] = useState('write');
 
   const {
     register,
@@ -93,6 +135,7 @@ const AdminAddProduct = () => {
     formState: { errors },
     setValue,
     watch,
+    reset,
   } = useForm({
     resolver: yupResolver(productSchema),
     defaultValues: {
@@ -112,12 +155,20 @@ const AdminAddProduct = () => {
 
   const description = watch('description') || '';
   const gemstoneValue = watch('gemstone');
+  const priceValue = watch('price');
 
   useEffect(() => {
-    fetchCategories();
+    const fetchCats = async () => {
+      try {
+        const response = await getCategories();
+        if (response.success) setCategories(response.categories || []);
+      } catch {
+        toast.error('Failed to load categories');
+      }
+    };
+    fetchCats();
   }, []);
 
-  // Watch gemstone selection to show/hide custom field
   useEffect(() => {
     if (gemstoneValue === 'Other') {
       setShowCustomGemstone(true);
@@ -127,24 +178,16 @@ const AdminAddProduct = () => {
     }
   }, [gemstoneValue, setValue]);
 
-  const fetchCategories = async () => {
-    try {
-      const response = await getCategories();
-      if (response.success) {
-        setCategories(response.categories);
-      }
-    } catch (error) {
-      toast.error('Failed to load categories');
-    }
-  };
-
+  // ==========================================
+  // IMAGE HANDLING
+  // ==========================================
   const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const invalidFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
-    if (invalidFiles.length > 0) {
-      toast.error('Some images are larger than 5MB. Please resize them.');
+    const oversized = files.filter((f) => f.size > 5 * 1024 * 1024);
+    if (oversized.length > 0) {
+      toast.error('Some images exceed 5MB. Please resize them.');
       return;
     }
 
@@ -153,84 +196,70 @@ const AdminAddProduct = () => {
       return;
     }
 
-    setImages([...images, ...files]);
-
-    const newPreviews = files.map((file) => URL.createObjectURL(file));
-    setImagePreviews([...imagePreviews, ...newPreviews]);
+    setImages((prev) => [...prev, ...files]);
+    const newPreviews = files.map((f) => URL.createObjectURL(f));
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removeImage = (index) => {
-    const newImages = [...images];
-    newImages.splice(index, 1);
-    setImages(newImages);
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
-    const newPreviews = [...imagePreviews];
-    URL.revokeObjectURL(newPreviews[index]);
-    newPreviews.splice(index, 1);
-    setImagePreviews(newPreviews);
+  const setMainImage = (index) => {
+    if (index === 0) return;
+    setImages((prev) => {
+      const copy = [...prev];
+      const [picked] = copy.splice(index, 1);
+      return [picked, ...copy];
+    });
+    setImagePreviews((prev) => {
+      const copy = [...prev];
+      const [picked] = copy.splice(index, 1);
+      return [picked, ...copy];
+    });
   };
 
   // ==========================================
-  // FORMAT HELPERS
+  // FORMAT HELPERS (unchanged)
   // ==========================================
-
   const wrapSelection = (prefix, suffix = prefix) => {
     const textarea = document.getElementById('description-textarea');
     if (!textarea) return;
-
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const selectedText = description.substring(start, end);
+    const selected = description.substring(start, end);
     const newText =
-      description.substring(0, start) +
-      prefix +
-      selectedText +
-      suffix +
-      description.substring(end);
-
+      description.substring(0, start) + prefix + selected + suffix + description.substring(end);
     setValue('description', newText, { shouldValidate: true });
-
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(
-        start + prefix.length,
-        end + prefix.length
-      );
+      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
     }, 0);
   };
 
   const insertLineStart = (prefix) => {
     const textarea = document.getElementById('description-textarea');
     if (!textarea) return;
-
     const start = textarea.selectionStart;
     const beforeCursor = description.substring(0, start);
     const lineStart = beforeCursor.lastIndexOf('\n') + 1;
     const newText =
-      description.substring(0, lineStart) +
-      prefix +
-      description.substring(lineStart);
-
+      description.substring(0, lineStart) + prefix + description.substring(lineStart);
     setValue('description', newText, { shouldValidate: true });
-
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(
-        start + prefix.length,
-        start + prefix.length
-      );
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length);
     }, 0);
   };
-
-  const handleBold = () => wrapSelection('**', '**');
-  const handleItalic = () => wrapSelection('*', '*');
-  const handleBullet = () => insertLineStart('• ');
-  const handleNumbered = () => insertLineStart('1. ');
 
   // ==========================================
   // SUBMIT
   // ==========================================
-
   const onSubmit = async (data) => {
     if (images.length === 0) {
       toast.error('Please upload at least one image');
@@ -238,525 +267,512 @@ const AdminAddProduct = () => {
     }
 
     setLoading(true);
-    setUploading(true);
-
     try {
-      const formData = new FormData();
+      const fd = new FormData();
+      fd.append('name', data.name);
+      fd.append('description', data.description);
+      fd.append('price', data.price);
+      if (data.discount_price) fd.append('discount_price', data.discount_price);
+      fd.append('category', data.category);
+      fd.append('material', data.material);
+      fd.append('stock', data.stock);
 
-      formData.append('name', data.name);
-      formData.append('description', data.description);
-      formData.append('price', data.price);
-      if (data.discount_price) formData.append('discount_price', data.discount_price);
-      formData.append('category', data.category);
-      formData.append('material', data.material);
-      formData.append('stock', data.stock);
-
-      // Gemstone logic — use custom if "Other" is selected
       const finalGemstone =
-        data.gemstone === 'Other'
-          ? data.custom_gemstone?.trim()
-          : data.gemstone;
-
+        data.gemstone === 'Other' ? data.custom_gemstone?.trim() : data.gemstone;
       if (finalGemstone && finalGemstone.toLowerCase() !== 'none') {
-        formData.append('gemstone', finalGemstone);
+        fd.append('gemstone', finalGemstone);
       }
+      if (data.weight) fd.append('weight', data.weight);
+      if (data.tags) fd.append('tags', data.tags);
+      if (data.is_featured) fd.append('is_featured', 'true');
+      if (data.is_ai_recommended) fd.append('is_ai_recommended', 'true');
 
-      if (data.weight) formData.append('weight', data.weight);
-      if (data.tags) formData.append('tags', data.tags);
+      images.forEach((img) => fd.append('images', img));
 
-      // Featured options
-      if (data.is_featured) formData.append('is_featured', 'true');
-      if (data.is_ai_recommended) formData.append('is_ai_recommended', 'true');
-
-      images.forEach((image) => {
-        formData.append('images', image);
-      });
-
-      const response = await adminCreateProduct(formData);
+      const response = await adminCreateProduct(fd);
       if (response.success) {
         toast.success('Product created successfully!');
         navigate('/admin/products');
       } else {
         toast.error(response.message || 'Failed to create product');
       }
-    } catch (error) {
-      console.error('Create product error:', error);
-      toast.error(error?.message || 'Failed to create product');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to create product');
     } finally {
       setLoading(false);
-      setUploading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+    <div className="max-w-5xl mx-auto pb-8">
+      {/* ==========================================
+          HEADER
+      ========================================== */}
+      <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate('/admin/products')}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          aria-label="Back"
         >
-          <ArrowLeftIcon className="w-6 h-6" />
+          <ArrowLeftIcon className="w-5 h-5" />
         </button>
-        <div>
-          <h1 className="text-3xl font-bold">Add New Product</h1>
-          <p className="text-gray-600">Create a new product for your catalog</p>
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Add New Product
+          </h1>
+          <p className="text-sm text-gray-500 truncate">
+            Create a new product for your catalog
+          </p>
         </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-lg p-6 md:p-8"
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* ==========================================
-              BASIC INFORMATION
-          ========================================== */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Name *
-                </label>
-                <input
-                  {...register('name')}
-                  className={`input-field ${errors.name ? 'border-red-500' : ''}`}
-                  placeholder="Enter product name"
-                />
-                {errors.name && (
-                  <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
-                )}
-              </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* ==========================================
+            BASIC INFO
+        ========================================== */}
+        <FormSection
+          icon={InformationCircleIcon}
+          title="Basic Information"
+          description="Name, category, and description of the product"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Product Name" required error={errors.name?.message}>
+              <input
+                {...register('name')}
+                className={inputClass(!!errors.name)}
+                placeholder="e.g., Rose Gold Pearl Necklace"
+              />
+            </Field>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category *
-                </label>
-                <select
-                  {...register('category')}
-                  className={`input-field ${errors.category ? 'border-red-500' : ''}`}
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
+            <Field label="Category" required error={errors.category?.message}>
+              <select
+                {...register('category')}
+                className={inputClass(!!errors.category)}
+              >
+                <option value="">Select Category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <div className="md:col-span-2">
+              <Field
+                label="Description"
+                required
+                error={errors.description?.message}
+              >
+                {/* Tabs */}
+                <div className="flex items-center gap-1 border-b border-gray-200 mb-2">
+                  {[
+                    { key: 'write', label: 'Write', icon: DocumentTextIcon },
+                    { key: 'preview', label: 'Preview', icon: EyeIcon },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setDescriptionTab(tab.key)}
+                      className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                        descriptionTab === tab.key
+                          ? 'text-amber-700 border-b-2 border-amber-500 bg-amber-50/50'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      <tab.icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
                   ))}
-                </select>
-                {errors.category && (
-                  <p className="mt-1 text-sm text-red-500">{errors.category.message}</p>
-                )}
-              </div>
-
-              {/* ==========================================
-                  DESCRIPTION WITH FORMAT TABS
-              ========================================== */}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description *
-                </label>
-
-                {/* Tab Buttons */}
-                <div className="flex items-center gap-1 mb-2 border-b border-gray-200">
-                  <button
-                    type="button"
-                    onClick={() => setDescriptionTab('write')}
-                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
-                      descriptionTab === 'write'
-                        ? 'text-amber-700 border-b-2 border-amber-500 bg-amber-50/50'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <DocumentTextIcon className="w-4 h-4" />
-                    Write
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDescriptionTab('preview')}
-                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
-                      descriptionTab === 'preview'
-                        ? 'text-amber-700 border-b-2 border-amber-500 bg-amber-50/50'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    👁 Preview
-                  </button>
                 </div>
 
-                {/* WRITE TAB */}
                 {descriptionTab === 'write' && (
                   <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-amber-400 focus-within:ring-4 focus-within:ring-amber-100 transition-all">
                     {/* Toolbar */}
-                    <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 border-b border-gray-200">
+                    <div className="flex items-center gap-1 px-2 py-1.5 bg-gray-50 border-b border-gray-200">
                       <button
                         type="button"
-                        onClick={handleBold}
-                        className="p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-gray-600 hover:text-gray-900"
-                        title="Bold (**text**)"
+                        onClick={() => wrapSelection('**', '**')}
+                        className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-gray-600 hover:text-gray-900 transition-all"
+                        title="Bold"
                       >
                         <BoldIcon className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
-                        onClick={handleItalic}
-                        className="p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-gray-600 hover:text-gray-900"
-                        title="Italic (*text*)"
+                        onClick={() => wrapSelection('*', '*')}
+                        className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-gray-600 hover:text-gray-900 transition-all"
+                        title="Italic"
                       >
                         <ItalicIcon className="w-4 h-4" />
                       </button>
-
                       <div className="w-px h-5 bg-gray-300 mx-1" />
-
                       <button
                         type="button"
-                        onClick={handleBullet}
-                        className="p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all text-gray-600 hover:text-gray-900"
-                        title="Bullet point"
+                        onClick={() => insertLineStart('• ')}
+                        className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-gray-600 hover:text-gray-900 transition-all"
+                        title="Bullet"
                       >
                         <ListBulletIcon className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
-                        onClick={handleNumbered}
-                        className="px-2 py-1 rounded-lg hover:bg-white hover:shadow-sm transition-all text-gray-600 hover:text-gray-900 text-sm font-semibold"
-                        title="Numbered list"
+                        onClick={() => insertLineStart('1. ')}
+                        className="px-2 py-1 rounded-lg hover:bg-white hover:shadow-sm text-gray-600 hover:text-gray-900 transition-all text-sm font-semibold"
+                        title="Numbered"
                       >
                         1.
                       </button>
-
-                      <div className="ml-auto text-[10px] text-gray-400 hidden sm:block">
+                      <span className="ml-auto text-[10px] text-gray-400 hidden sm:block pr-2">
                         Markdown supported
-                      </div>
+                      </span>
                     </div>
 
-                    {/* Textarea */}
                     <textarea
                       id="description-textarea"
                       {...register('description')}
                       rows="8"
-                      className={`w-full px-4 py-3 outline-none resize-none text-sm leading-relaxed ${
-                        errors.description ? 'bg-red-50/30' : 'bg-white'
-                      }`}
+                      className="w-full px-4 py-3 outline-none resize-none text-sm leading-relaxed bg-white"
                       placeholder={`Write a detailed description...
 
 You can use:
 • Bullet points
 **Bold** text
-*Italic* text
-
-Example:
-This exquisite **gold necklace** is handcrafted with:
-• 18K gold plating
-• Cubic zirconia stones
-• Adjustable chain length`}
+*Italic* text`}
                     />
                   </div>
                 )}
 
-                {/* PREVIEW TAB */}
                 {descriptionTab === 'preview' && (
                   <div className="border border-gray-200 rounded-xl p-4 min-h-[200px] bg-gray-50/50">
                     {description.trim() ? (
-                      <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed space-y-2">
+                      <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed space-y-1.5">
                         {renderFormattedDescription(description)}
                       </div>
                     ) : (
                       <p className="text-sm text-gray-400 italic">
-                        Nothing to preview yet. Switch to the "Write" tab and start typing.
+                        Nothing to preview yet. Switch to "Write" and start typing.
                       </p>
                     )}
                   </div>
                 )}
-
-                {errors.description && (
-                  <p className="mt-1 text-sm text-red-500">{errors.description.message}</p>
-                )}
-              </div>
+              </Field>
             </div>
           </div>
+        </FormSection>
 
-          {/* ==========================================
-              PRICING
-          ========================================== */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Pricing</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Price (₹) *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  {...register('price')}
-                  className={`input-field ${errors.price ? 'border-red-500' : ''}`}
-                  placeholder="0.00"
-                />
-                {errors.price && (
-                  <p className="mt-1 text-sm text-red-500">{errors.price.message}</p>
-                )}
-              </div>
+        {/* ==========================================
+            PRICING
+        ========================================== */}
+        <FormSection
+          icon={CurrencyRupeeIcon}
+          title="Pricing"
+          description="Set the base price and optional discount"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Price (₹)" required error={errors.price?.message}>
+              <input
+                type="number"
+                step="0.01"
+                {...register('price')}
+                className={inputClass(!!errors.price)}
+                placeholder="0.00"
+              />
+            </Field>
+            <Field
+              label="Discount Price (₹)"
+              error={errors.discount_price?.message}
+              hint="Leave empty if no discount"
+            >
+              <input
+                type="number"
+                step="0.01"
+                {...register('discount_price')}
+                className={inputClass(!!errors.discount_price)}
+                placeholder="0.00"
+              />
+            </Field>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Discount Price (₹)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  {...register('discount_price')}
-                  className="input-field"
-                  placeholder="0.00"
-                />
-                {errors.discount_price && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {errors.discount_price.message}
-                  </p>
-                )}
-              </div>
-            </div>
+            {/* Live discount preview */}
+            {priceValue &&
+              watch('discount_price') &&
+              Number(watch('discount_price')) > 0 &&
+              Number(priceValue) > 0 && (
+                <div className="md:col-span-2 flex items-center gap-2 text-sm bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-2 rounded-xl">
+                  <SparklesIcon className="w-4 h-4" />
+                  <span>
+                    Customer saves{' '}
+                    <strong>
+                      ₹
+                      {(
+                        Number(priceValue) - Number(watch('discount_price'))
+                      ).toFixed(2)}
+                    </strong>{' '}
+                    (
+                    {Math.round(
+                      ((Number(priceValue) - Number(watch('discount_price'))) /
+                        Number(priceValue)) *
+                        100
+                    )}
+                    % off)
+                  </span>
+                </div>
+              )}
           </div>
+        </FormSection>
 
-          {/* ==========================================
-              PRODUCT DETAILS
-          ========================================== */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Product Details</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Material *
-                </label>
-                <select
-                  {...register('material')}
-                  className={`input-field ${errors.material ? 'border-red-500' : ''}`}
+        {/* ==========================================
+            PRODUCT DETAILS
+        ========================================== */}
+        <FormSection
+          icon={TagIcon}
+          title="Product Details"
+          description="Material, stock, gemstone, and tags"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Material" required error={errors.material?.message}>
+              <select
+                {...register('material')}
+                className={inputClass(!!errors.material)}
+              >
+                <option value="">Select Material</option>
+                {MATERIALS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Stock" required error={errors.stock?.message}>
+              <input
+                type="number"
+                {...register('stock')}
+                className={inputClass(!!errors.stock)}
+                placeholder="0"
+              />
+            </Field>
+
+            <Field label="Gemstone">
+              <select
+                {...register('gemstone')}
+                className={inputClass(false)}
+              >
+                <option value="">Select Gemstone</option>
+                {GEMSTONE_OPTIONS.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+
+              {showCustomGemstone && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-2"
                 >
-                  <option value="">Select Material</option>
-                  <option value="Gold">Gold</option>
-                  <option value="Silver">Silver</option>
-                  <option value="Platinum">Platinum</option>
-                  <option value="Rose Gold">Rose Gold</option>
-                  <option value="White Gold">White Gold</option>
-                  <option value="Brass">Brass</option>
-                  <option value="Stainless Steel">Stainless Steel</option>
-                  <option value="Titanium">Titanium</option>
-                </select>
-                {errors.material && (
-                  <p className="mt-1 text-sm text-red-500">{errors.material.message}</p>
-                )}
-              </div>
+                  <input
+                    type="text"
+                    {...register('custom_gemstone')}
+                    className={inputClass(false)}
+                    placeholder="Enter gemstone name"
+                    autoFocus
+                  />
+                </motion.div>
+              )}
+            </Field>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Stock *
-                </label>
-                <input
-                  type="number"
-                  {...register('stock')}
-                  className={`input-field ${errors.stock ? 'border-red-500' : ''}`}
-                  placeholder="0"
-                />
-                {errors.stock && (
-                  <p className="mt-1 text-sm text-red-500">{errors.stock.message}</p>
-                )}
-              </div>
+            <Field label="Weight (grams)" error={errors.weight?.message}>
+              <input
+                type="number"
+                step="0.01"
+                {...register('weight')}
+                className={inputClass(!!errors.weight)}
+                placeholder="0.00"
+              />
+            </Field>
 
-              {/* ==========================================
-                  GEMSTONE — WITH CUSTOM OPTION
-              ========================================== */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Gemstone
-                </label>
-                <select
-                  {...register('gemstone')}
-                  className="input-field"
-                >
-                  <option value="">Select Gemstone</option>
-                  {GEMSTONE_OPTIONS.map((gem) => (
-                    <option key={gem} value={gem}>
-                      {gem}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Custom gemstone input */}
-                {showCustomGemstone && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-2"
-                  >
-                    <input
-                      type="text"
-                      {...register('custom_gemstone')}
-                      className="input-field"
-                      placeholder="Enter gemstone name"
-                      autoFocus
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Type the custom gemstone name
-                    </p>
-                  </motion.div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Weight (grams)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  {...register('weight')}
-                  className="input-field"
-                  placeholder="0.00"
-                />
-                {errors.weight && (
-                  <p className="mt-1 text-sm text-red-500">{errors.weight.message}</p>
-                )}
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tags (comma separated)
-                </label>
+            <div className="md:col-span-2">
+              <Field label="Tags" hint="Separate multiple tags with commas">
                 <input
                   {...register('tags')}
-                  className="input-field"
+                  className={inputClass(false)}
                   placeholder="e.g., necklace, gold, luxury"
                 />
-                <p className="text-xs text-gray-400 mt-1">
-                  Separate multiple tags with commas
-                </p>
-              </div>
+              </Field>
             </div>
           </div>
+        </FormSection>
 
-          {/* ==========================================
-              IMAGES
-          ========================================== */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Product Images</h2>
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-amber-400 transition-colors">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-                id="image-upload"
-                disabled={images.length >= 10}
-              />
-              <label
-                htmlFor="image-upload"
-                className={`cursor-pointer ${images.length >= 10 ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <PhotoIcon className="w-12 h-12 mx-auto text-gray-400" />
-                <p className="mt-2 text-sm text-gray-500">
-                  {images.length >= 10
-                    ? 'Maximum 10 images reached'
-                    : 'Click to upload images'}
-                </p>
-                <p className="text-xs text-gray-400">PNG, JPG, WebP • Max 5MB each</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {images.length}/10 images uploaded
-                </p>
-              </label>
-            </div>
+        {/* ==========================================
+            IMAGES
+        ========================================== */}
+        <FormSection
+          icon={PhotoIcon}
+          title="Product Images"
+          description="First image will be the main product image. Max 10 images."
+        >
+          <div
+            onClick={() =>
+              images.length < 10 && fileInputRef.current?.click()
+            }
+            className={`border-2 border-dashed rounded-xl p-6 md:p-8 text-center transition-colors ${
+              images.length >= 10
+                ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                : 'border-gray-300 hover:border-amber-400 hover:bg-amber-50/30 cursor-pointer'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+              disabled={images.length >= 10}
+            />
+            <PhotoIcon className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+            <p className="text-sm font-medium text-gray-700">
+              {images.length >= 10
+                ? 'Maximum 10 images reached'
+                : 'Click to upload images'}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              PNG, JPG, WebP • Max 5MB each
+            </p>
+            <p className="text-xs text-amber-600 font-semibold mt-2">
+              {images.length}/10 uploaded
+            </p>
+          </div>
 
-            {imagePreviews.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
-                {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={preview}
-                      alt={`Product ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg border border-gray-200"
-                    />
+          {imagePreviews.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-4">
+              {imagePreviews.map((preview, index) => (
+                <div
+                  key={index}
+                  className={`relative group rounded-xl overflow-hidden border-2 transition-all ${
+                    index === 0 ? 'border-amber-400' : 'border-gray-200'
+                  }`}
+                >
+                  <img
+                    src={preview}
+                    alt={`Preview ${index + 1}`}
+                    className="w-full h-28 md:h-32 object-cover"
+                  />
+
+                  {/* Remove */}
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-1.5 right-1.5 p-1 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 transition-colors opacity-90 hover:opacity-100"
+                    aria-label="Remove image"
+                  >
+                    <XMarkIcon className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Main badge / Set main */}
+                  {index === 0 ? (
+                    <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full shadow-sm">
+                      MAIN
+                    </span>
+                  ) : (
                     <button
                       type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                      onClick={() => setMainImage(index)}
+                      className="absolute bottom-1.5 left-1.5 px-2 py-0.5 bg-white/90 backdrop-blur text-gray-700 hover:bg-amber-500 hover:text-white text-[10px] font-bold rounded-full shadow-sm transition-colors opacity-0 group-hover:opacity-100"
                     >
-                      <XMarkIcon className="w-4 h-4" />
+                      Set Main
                     </button>
-                    {index === 0 && (
-                      <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-amber-500 text-white text-[10px] font-semibold rounded-full">
-                        Main
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ==========================================
-              FEATURED OPTIONS
-          ========================================== */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Featured Options</h2>
-            <div className="flex flex-wrap gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  {...register('is_featured')}
-                  className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
-                />
-                <span className="text-sm">Featured Product</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  {...register('is_ai_recommended')}
-                  className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
-                />
-                <span className="text-sm">AI Recommended</span>
-              </label>
+                  )}
+                </div>
+              ))}
             </div>
-          </div>
+          )}
+        </FormSection>
 
-          {/* ==========================================
-              SUBMIT
-          ========================================== */}
-          <div className="flex gap-4 pt-6 border-t border-gray-200">
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {loading ? (
-                <LoadingSpinner size="sm" />
-              ) : (
-                <>
-                  <PlusIcon className="w-5 h-5" />
-                  Create Product
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/admin/products')}
-              className="px-6 py-3 border-2 border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
+        {/* ==========================================
+            FEATURED
+        ========================================== */}
+        <FormSection
+          icon={SparklesIcon}
+          title="Featured Options"
+          description="Highlight this product in special sections"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex items-center gap-3 p-3.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:border-amber-400 hover:bg-amber-50/30 transition-all">
+              <input
+                type="checkbox"
+                {...register('is_featured')}
+                className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  Featured Product
+                </p>
+                <p className="text-xs text-gray-500">
+                  Show on homepage showcase
+                </p>
+              </div>
+            </label>
+
+            <label className="flex items-center gap-3 p-3.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:border-amber-400 hover:bg-amber-50/30 transition-all">
+              <input
+                type="checkbox"
+                {...register('is_ai_recommended')}
+                className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  AI Recommended
+                </p>
+                <p className="text-xs text-gray-500">
+                  Show in AI picks
+                </p>
+              </div>
+            </label>
           </div>
-        </form>
-      </motion.div>
+        </FormSection>
+
+        {/* ==========================================
+            SUBMIT (sticky on mobile)
+        ========================================== */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 -mx-4 md:mx-0 px-4 md:px-0 py-4 flex flex-col sm:flex-row gap-3 md:rounded-2xl md:border md:p-4">
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-yellow-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <>
+                <LoadingSpinner size="sm" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <PlusIcon className="w-5 h-5" />
+                Create Product
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/products')}
+            className="px-6 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium text-gray-700"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
 
 // ==========================================
-// MARKDOWN-LIKE RENDERER
+// MARKDOWN RENDERERS (unchanged)
 // ==========================================
 function renderFormattedDescription(text) {
   if (!text) return null;
-
   const lines = text.split('\n');
   const elements = [];
 
@@ -768,7 +784,6 @@ function renderFormattedDescription(text) {
       return;
     }
 
-    // Handle bullet points
     if (trimmed.startsWith('• ') || trimmed.startsWith('- ')) {
       elements.push(
         <div key={lineIdx} className="flex items-start gap-2 ml-2">
@@ -779,7 +794,6 @@ function renderFormattedDescription(text) {
       return;
     }
 
-    // Handle numbered lists
     if (/^\d+\.\s/.test(trimmed)) {
       const match = trimmed.match(/^(\d+)\.\s(.*)$/);
       if (match) {
@@ -795,17 +809,13 @@ function renderFormattedDescription(text) {
       }
     }
 
-    // Regular paragraph
-    elements.push(
-      <p key={lineIdx}>{applyInlineFormatting(trimmed)}</p>
-    );
+    elements.push(<p key={lineIdx}>{applyInlineFormatting(trimmed)}</p>);
   });
 
   return elements;
 }
 
 function applyInlineFormatting(text) {
-  // Split by bold/italic patterns, preserving them
   const parts = [];
   const regex = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
   let lastIndex = 0;
@@ -816,9 +826,7 @@ function applyInlineFormatting(text) {
     if (match.index > lastIndex) {
       parts.push(text.substring(lastIndex, match.index));
     }
-
     const token = match[0];
-
     if (token.startsWith('**') && token.endsWith('**')) {
       parts.push(
         <strong key={`b-${keyIdx++}`} className="font-bold text-gray-900">
@@ -832,14 +840,9 @@ function applyInlineFormatting(text) {
         </em>
       );
     }
-
     lastIndex = regex.lastIndex;
   }
-
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
-  }
-
+  if (lastIndex < text.length) parts.push(text.substring(lastIndex));
   return parts.length ? parts : text;
 }
 
