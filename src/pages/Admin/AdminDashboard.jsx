@@ -16,6 +16,7 @@ import {
   CubeIcon,
   DocumentTextIcon,
   EyeIcon,
+  PlusIcon,
   ArrowPathIcon,
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
@@ -110,7 +111,9 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6 md:space-y-8 pb-8">
-      {/* HERO HEADER */}
+      {/* =========================
+          HERO HEADER
+      ========================== */}
       <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-600 p-5 md:p-8">
         <div className="absolute -top-24 -right-24 w-72 md:w-96 h-72 md:h-96 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-24 -left-24 w-72 md:w-96 h-72 md:h-96 bg-white/10 rounded-full blur-3xl" />
@@ -145,7 +148,9 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* STAT CARDS */}
+      {/* =========================
+          STAT CARDS
+      ========================== */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
@@ -179,7 +184,9 @@ const AdminDashboard = () => {
         })}
       </div>
 
-      {/* ORDER STATUS + QUICK ACTIONS */}
+      {/* =========================
+          ORDER STATUS + QUICK ACTIONS
+      ========================== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Order Status */}
         <motion.div
@@ -280,7 +287,9 @@ const AdminDashboard = () => {
         </motion.div>
       </div>
 
-      {/* RECENT ORDERS */}
+      {/* =========================
+          RECENT ORDERS
+      ========================== */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -318,15 +327,26 @@ const AdminDashboard = () => {
           </div>
         ) : (
           <>
+            {/* Desktop / Tablet table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50/80 border-b border-gray-100">
-                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order</th>
-                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Order
+                    </th>
+                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="text-left py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -362,7 +382,10 @@ const AdminDashboard = () => {
                         </td>
                         <td className="py-3 px-6">
                           <p className="text-sm font-bold text-gray-900">
-                            ₹{Number(order?.total_price || order?.total || 0).toFixed(2)}
+                            ₹
+                            {Number(
+                              order?.total_price || order?.total || 0
+                            ).toFixed(2)}
                           </p>
                         </td>
                         <td className="py-3 px-6">
@@ -376,11 +399,14 @@ const AdminDashboard = () => {
                         <td className="py-3 px-6">
                           <span className="text-sm text-gray-500 whitespace-nowrap">
                             {order?.created_at
-                              ? new Date(order.created_at).toLocaleDateString('en-IN', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                })
+                              ? new Date(order.created_at).toLocaleDateString(
+                                  'en-IN',
+                                  {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric',
+                                  }
+                                )
                               : '-'}
                           </span>
                         </td>
@@ -391,6 +417,7 @@ const AdminDashboard = () => {
               </table>
             </div>
 
+            {/* Mobile card view */}
             <div className="md:hidden divide-y divide-gray-100">
               {recentOrders.map((order, index) => {
                 const status = order?.status?.toLowerCase() || 'pending';
@@ -427,14 +454,17 @@ const AdminDashboard = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-bold text-gray-900">
-                        ₹{Number(order?.total_price || order?.total || 0).toFixed(2)}
+                        ₹
+                        {Number(order?.total_price || order?.total || 0).toFixed(
+                          2
+                        )}
                       </span>
                       <span className="text-xs text-gray-400">
                         {order?.created_at
-                          ? new Date(order.created_at).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                            })
+                          ? new Date(order.created_at).toLocaleDateString(
+                              'en-IN',
+                              { day: 'numeric', month: 'short' }
+                            )
                           : '-'}
                       </span>
                     </div>
