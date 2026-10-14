@@ -1,206 +1,120 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import {
-  SparklesIcon,
-  ArrowRightIcon,
-  StarIcon,
-  ShieldCheckIcon,
-  TruckIcon,
-} from '@heroicons/react/24/outline';
+import { ArrowRightIcon, StarIcon } from '@heroicons/react/24/outline';
 
 const Hero = () => {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-[#fefcf7] via-white to-[#fff7e6]">
-      {/* Background Decorations */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 -right-32 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 -left-32 w-96 h-96 bg-yellow-200/30 rounded-full blur-3xl" />
-      </div>
-
-      <div className="container-custom relative z-10 py-12 lg:py-16">
+    <section className="bg-cream-100">
+      <div className="container-editorial pt-8 md:pt-12 pb-10 md:pb-14">
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-
-          {/* ========================================
-              LEFT CONTENT (5 columns on lg)
-          ======================================== */}
+          {/* LEFT — Text */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="lg:col-span-5 space-y-6"
+            transition={{ duration: 0.7 }}
+            className="lg:col-span-5 space-y-5"
           >
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-800 px-3.5 py-1.5 rounded-full border border-amber-200">
-              <SparklesIcon className="w-3.5 h-3.5" />
-              <span className="text-xs font-semibold tracking-wide">
-                AI-Powered Jewellery Boutique
-              </span>
-            </div>
+            <p className="kicker">New Season · Autumn 2026</p>
 
-            {/* Heading */}
-            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-[1.05]">
-              Elegance
+            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-ink-800 leading-[1.05]">
+              Elegance,
               <br />
-              <span className="gradient-text italic">Redefined</span>
+              <span className="italic">made simple.</span>
             </h1>
 
-            {/* Subtext */}
-            <p className="text-base lg:text-lg text-gray-600 leading-relaxed max-w-md">
-              Discover handcrafted jewellery pieces curated by artificial
-              intelligence to match your unique style and personality.
+            <p className="text-sm md:text-base text-ink-600 leading-relaxed max-w-md">
+              Handcrafted jewellery for the moments that matter — curated by
+              hand, worn with love.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-wrap gap-3 pt-2">
-              <Link to="/products" className="btn-primary group">
-                Explore Collection
-                <ArrowRightIcon className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Link to="/products" className="btn-solid group">
+                Shop Collection
+                <ArrowRightIcon className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <Link to="/categories" className="btn-secondary">
-                Shop Categories
+              <Link
+                to="/categories"
+                className="group inline-flex items-center gap-2 text-sm font-medium text-ink-800 hover:text-burgundy-500 transition-colors border-b border-ink-800 hover:border-burgundy-500 pb-0.5"
+              >
+                Browse Categories
+                <ArrowRightIcon className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             </div>
 
-            {/* Trust Stats Row */}
-            <div className="flex items-center gap-6 pt-4 border-t border-gray-100">
+            {/* Inline trust — compact */}
+            <div className="flex items-center gap-5 pt-4 border-t border-line">
               <div>
-                <p className="font-serif text-2xl lg:text-3xl font-bold text-gray-900">
-                  10K+
+                <p className="font-serif text-lg font-bold text-ink-800">
+                  1,000+
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">Happy Clients</p>
+                <p className="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-0.5">
+                  Happy Customers
+                </p>
               </div>
-              <div className="w-px h-10 bg-gray-200" />
+              <div className="w-px h-8 bg-line" />
               <div>
-                <p className="font-serif text-2xl lg:text-3xl font-bold text-gray-900">
-                  500+
+                <p className="font-serif text-lg font-bold text-ink-800">
+                  200+
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">Designs</p>
+                <p className="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-0.5">
+                  Unique Designs
+                </p>
               </div>
-              <div className="w-px h-10 bg-gray-200" />
+              <div className="w-px h-8 bg-line" />
               <div>
                 <div className="flex items-center gap-1">
-                  <p className="font-serif text-2xl lg:text-3xl font-bold text-gray-900">
+                  <p className="font-serif text-lg font-bold text-ink-800">
                     4.9
                   </p>
-                  <StarIcon className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <StarIcon className="w-3 h-3 text-ink-800 fill-ink-800" />
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">Rating</p>
+                <p className="text-[10px] uppercase tracking-wider text-ink-500 font-medium mt-0.5">
+                  Rating
+                </p>
               </div>
             </div>
           </motion.div>
 
-          {/* ========================================
-              RIGHT VISUAL (7 columns on lg)
-          ======================================== */}
+          {/* RIGHT — Image grid (2 stacked images, editorial) */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-            className="lg:col-span-7 relative"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.15 }}
+            className="lg:col-span-7"
           >
-            {/* Main Image */}
-            <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-amber-50">
-              <img
-                src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=900&h=700&fit=crop"
-                alt="Luxury Jewellery"
-                className="w-full h-[280px] sm:h-[380px] lg:h-[500px] object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+            <div className="grid grid-cols-3 gap-3 md:gap-4">
+              {/* Large image */}
+              <div className="col-span-2 aspect-[4/5] overflow-hidden rounded-lg bg-cream-200">
+                <img
+                  src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=900&h=1100&fit=crop&q=80"
+                  alt="Handcrafted jewellery"
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                />
+              </div>
+
+              {/* Two small stacked images */}
+              <div className="col-span-1 flex flex-col gap-3 md:gap-4">
+                <div className="flex-1 overflow-hidden rounded-lg bg-cream-200">
+                  <img
+                    src="https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&h=600&fit=crop&q=80"
+                    alt="Detail"
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                  />
+                </div>
+                <div className="flex-1 overflow-hidden rounded-lg bg-cream-200">
+                  <img
+                    src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=500&h=600&fit=crop&q=80"
+                    alt="Detail"
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                  />
+                </div>
+              </div>
             </div>
-
-            {/* Floating Card 1 — AI Curated (top-left) */}
-            <motion.div
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-4 lg:top-6 -left-2 lg:-left-6 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-3 lg:p-4 border border-white/60"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 lg:w-11 lg:h-11 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-md">
-                  <SparklesIcon className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs lg:text-sm font-bold text-gray-900">
-                    AI Curated
-                  </p>
-                  <p className="text-[10px] lg:text-xs text-gray-500">
-                    Just for you
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Floating Card 2 — Trust (bottom-right) */}
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-              className="absolute bottom-4 lg:bottom-6 -right-2 lg:-right-4 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-3 lg:p-4 border border-white/60"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 lg:w-11 lg:h-11 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center shadow-md">
-                  <ShieldCheckIcon className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs lg:text-sm font-bold text-gray-900">
-                    100% Secure
-                  </p>
-                  <p className="text-[10px] lg:text-xs text-gray-500">
-                    Certified pieces
-                  </p>
-                </div>
-              </div>
-            </motion.div>
           </motion.div>
         </div>
-
-        {/* ========================================
-            BOTTOM STRIP — Trust Signals
-        ======================================== */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-10 lg:mt-14 grid grid-cols-2 lg:grid-cols-4 gap-4 pt-8 border-t border-gray-100"
-        >
-          {[
-            {
-              icon: TruckIcon,
-              title: 'Free Shipping',
-              subtitle: 'On orders above ₹1000',
-            },
-            {
-              icon: ShieldCheckIcon,
-              title: 'Secure Payments',
-              subtitle: 'Razorpay protected',
-            },
-            {
-              icon: SparklesIcon,
-              title: 'AI Recommendations',
-              subtitle: 'Tailored to your taste',
-            },
-            {
-              icon: StarIcon,
-              title: 'Lifetime Warranty',
-              subtitle: 'On all premium pieces',
-            },
-          ].map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-5 h-5 text-amber-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs lg:text-sm font-semibold text-gray-900 truncate">
-                    {item.title}
-                  </p>
-                  <p className="text-[10px] lg:text-xs text-gray-500 truncate">
-                    {item.subtitle}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </motion.div>
       </div>
     </section>
   );

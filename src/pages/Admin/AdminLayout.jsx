@@ -1,30 +1,120 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HomeIcon,
   ShoppingBagIcon,
   TagIcon,
-  UsersIcon,
+  Squares2X2Icon,
   ChartBarIcon,
   Cog6ToothIcon,
   ArrowLeftOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
-  SparklesIcon,
   CurrencyRupeeIcon,
+  ArrowUpRightIcon,
 } from '@heroicons/react/24/outline';
 
+import { useAuth } from '../../context/AuthContext';
+
+// ==========================================
+// AVATAR URL NORMALIZER
+// ==========================================
+const normalizeAvatar = (url) => {
+  if (!url) return null;
+
+  // Google avatars — force valid size, strip bad suffix
+  if (url.includes('googleusercontent.com')) {
+    const base = url.split('=')[0];
+    return `${base}=s200-c`;
+  }
+
+  // Cloudinary — auto optimize
+  if (url.includes('res.cloudinary.com')) {
+    return url.replace(
+      '/upload/',
+      '/upload/f_auto,q_auto,w_200,h_200,c_fill/'
+    );
+  }
+
+  return url;
+};
+
+// ==========================================
+// USER AVATAR COMPONENT
+// ==========================================
+const UserAvatar = ({ user, size = 'sm' }) => {
+  const [error, setError] = useState(false);
+
+  const rawSrc =
+    user?.avatar ||
+    user?.profile_image ||
+    user?.avatar_url ||
+    user?.profile_pic ||
+    user?.image ||
+    null;
+
+  const src = normalizeAvatar(rawSrc);
+
+  const name =
+    user?.name ||
+    user?.full_name ||
+    user?.username ||
+    user?.given_name ||
+    'Admin';
+
+  const initial = name.charAt(0).toUpperCase();
+
+  // Reset error when src changes
+  useEffect(() => {
+    setError(false);
+  }, [src]);
+
+  const sizeClass =
+    size === 'lg'
+      ? 'w-9 h-9 text-xs'
+      : size === 'md'
+      ? 'w-8 h-8 text-[11px]'
+      : 'w-7 h-7 text-[10px]';
+
+  if (src && !error) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        referrerPolicy="no-referrer"
+        crossOrigin="anonymous"
+        loading="lazy"
+        onError={() => setError(true)}
+        className={`${sizeClass} rounded-full object-cover flex-shrink-0 bg-cream-200`}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={`${sizeClass} rounded-full bg-ink-800 text-cream-100 flex items-center justify-center font-bold flex-shrink-0`}
+    >
+      {initial}
+    </span>
+  );
+};
+
+// ==========================================
+// MAIN ADMIN LAYOUT
+// ==========================================
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: HomeIcon },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingBagIcon },
     { name: 'Payments', href: '/admin/payments', icon: CurrencyRupeeIcon },
     { name: 'Products', href: '/admin/products', icon: TagIcon },
-    { name: 'Categories', href: '/admin/categories', icon: UsersIcon },
+    { name: 'Categories', href: '/admin/categories', icon: Squares2X2Icon },
     { name: 'Analytics', href: '/admin/analytics', icon: ChartBarIcon },
     { name: 'Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];
@@ -42,14 +132,10 @@ const AdminLayout = () => {
   }, [location.pathname]);
 
   // ==========================================
-  // LOCK SCROLL WHEN MOBILE SIDEBAR IS OPEN
+  // LOCK SCROLL ON MOBILE SIDEBAR
   // ==========================================
   useEffect(() => {
-    if (sidebarOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
@@ -58,32 +144,46 @@ const AdminLayout = () => {
   const currentPage =
     navigation.find((item) => isActive(item.href))?.name || 'Admin';
 
+  const userName =
+    user?.name ||
+    user?.full_name ||
+    user?.username ||
+    user?.given_name ||
+    'Admin';
+
+  const userEmail = user?.email || '';
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-cream-100">
       {/* ==========================================
           MOBILE TOPBAR
       ========================================== */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-b border-gray-100 h-14 flex items-center px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-cream-100/95 backdrop-blur border-b border-line h-14 flex items-center px-4">
         <button
           onClick={() => setSidebarOpen(true)}
-          className="p-2 -ml-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 -ml-2 hover:bg-cream-200 rounded transition-colors"
           aria-label="Open menu"
         >
-          <Bars3Icon className="w-6 h-6 text-gray-700" />
+          <Bars3Icon className="w-5 h-5 text-ink-800" />
         </button>
 
-        <div className="flex items-center gap-2 ml-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center flex-shrink-0">
-            <SparklesIcon className="w-4 h-4 text-white" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-bold text-sm leading-tight truncate">
-              {currentPage}
-            </p>
-            <p className="text-[10px] text-gray-500 leading-tight">
-              Admin Panel
-            </p>
-          </div>
+        <div className="ml-3 min-w-0">
+          <p className="text-[10px] uppercase tracking-kicker font-semibold text-ink-500 leading-none mb-1">
+            Admin
+          </p>
+          <p className="font-serif text-sm font-bold text-ink-800 leading-none truncate">
+            {currentPage}
+          </p>
+        </div>
+
+        {/* ✅ FIXED — User chip with real avatar */}
+        <div className="ml-auto flex items-center gap-2">
+          <UserAvatar user={user} size="sm" />
         </div>
       </header>
 
@@ -97,7 +197,7 @@ const AdminLayout = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-ink-950/50 backdrop-blur-sm lg:hidden"
           />
         )}
       </AnimatePresence>
@@ -107,37 +207,40 @@ const AdminLayout = () => {
       ========================================== */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-72 lg:w-64 bg-white shadow-xl flex flex-col
+          fixed inset-y-0 left-0 z-50 w-72 lg:w-64 bg-white border-r border-line flex flex-col
           transform transition-transform duration-300 ease-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        {/* Logo / Close on mobile */}
-        <div className="p-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-          <Link to="/admin" className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center shadow-md flex-shrink-0">
-              <SparklesIcon className="w-5 h-5 text-white" />
-            </div>
+        {/* Logo + Close */}
+        <div className="p-5 border-b border-line flex items-center justify-between flex-shrink-0">
+          <Link to="/admin" className="flex items-center gap-2.5 min-w-0">
+            <span className="w-9 h-9 rounded-lg bg-ink-800 flex items-center justify-center flex-shrink-0">
+              <span className="font-serif text-cream-100 text-sm font-bold">
+                C
+              </span>
+            </span>
             <div className="min-w-0">
-              <h1 className="text-base font-serif font-bold text-gray-900 leading-tight truncate">
+              <p className="font-serif text-sm font-bold text-ink-800 leading-none truncate">
                 The Charm
-              </h1>
-              <p className="text-[10px] text-amber-600 font-semibold tracking-[0.2em] uppercase">
+              </p>
+              <p className="text-[9px] uppercase tracking-[0.2em] font-semibold text-ink-500 mt-1">
                 Admin
               </p>
             </div>
           </Link>
+
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="lg:hidden p-1.5 hover:bg-cream-100 rounded transition-colors"
             aria-label="Close menu"
           >
-            <XMarkIcon className="w-5 h-5 text-gray-500" />
+            <XMarkIcon className="w-4 h-4 text-ink-500" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {navigation.map((item) => {
             const active = isActive(item.href);
             return (
@@ -145,40 +248,59 @@ const AdminLayout = () => {
                 key={item.name}
                 to={item.href}
                 className={`
-                  relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200
+                  relative flex items-center gap-3 px-3 py-2.5 rounded text-sm transition-colors
                   ${
                     active
-                      ? 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 font-semibold shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-cream-100 text-burgundy-500 font-medium'
+                      : 'text-ink-600 hover:bg-cream-100 hover:text-ink-800'
                   }
                 `}
               >
                 <item.icon
-                  className={`w-5 h-5 flex-shrink-0 ${
-                    active ? 'text-amber-600' : ''
+                  className={`w-[18px] h-[18px] flex-shrink-0 ${
+                    active ? 'text-burgundy-500' : 'text-ink-500'
                   }`}
                 />
-                <span className="text-sm">{item.name}</span>
+                <span>{item.name}</span>
                 {active && (
-                  <motion.div
-                    layoutId="adminActiveIndicator"
-                    className="ml-auto w-1.5 h-6 bg-amber-500 rounded-full"
-                  />
+                  <span className="ml-auto w-1 h-4 rounded-full bg-burgundy-500" />
                 )}
               </Link>
             );
           })}
         </nav>
 
+        {/* ✅ FIXED — User card with real avatar */}
+        <div className="px-3 pb-2">
+          <div className="flex items-center gap-3 p-3 bg-cream-100 border border-line rounded">
+            <UserAvatar user={user} size="lg" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-ink-800 truncate leading-tight">
+                {userName}
+              </p>
+              <p className="text-[10px] text-ink-500 truncate mt-0.5">
+                {userEmail}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
-        <div className="p-3 border-t border-gray-100 flex-shrink-0">
+        <div className="p-3 border-t border-line flex-shrink-0 space-y-0.5">
           <Link
             to="/"
-            className="flex items-center gap-3 px-3.5 py-2.5 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-xl transition-colors text-sm"
+            className="flex items-center gap-3 px-3 py-2.5 text-sm text-ink-600 hover:bg-cream-100 hover:text-ink-800 rounded transition-colors"
           >
-            <ArrowLeftOnRectangleIcon className="w-5 h-5" />
+            <ArrowUpRightIcon className="w-[18px] h-[18px] text-ink-500" />
             Back to Shop
           </Link>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-burgundy-500 hover:bg-burgundy-50 rounded transition-colors font-medium"
+          >
+            <ArrowLeftOnRectangleIcon className="w-[18px] h-[18px]" />
+            Logout
+          </button>
         </div>
       </aside>
 

@@ -42,7 +42,6 @@ const AdminCategories = () => {
       const response = await adminGetCategories({ include_inactive: true });
       if (response.success) setCategories(response.categories || []);
     } catch (error) {
-      console.error('Fetch categories error:', error);
       toast.error(error?.message || 'Failed to load categories');
     } finally {
       setLoading(false);
@@ -59,8 +58,7 @@ const AdminCategories = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name?.trim()) {
-      toast.error('Category name is required');
-      return;
+      return toast.error('Category name is required');
     }
 
     setSaving(true);
@@ -75,18 +73,14 @@ const AdminCategories = () => {
         : await adminCreateCategory(fd);
 
       if (response.success) {
-        toast.success(
-          editingCategory
-            ? 'Category updated successfully'
-            : 'Category created successfully'
-        );
+        toast.success(editingCategory ? 'Category updated' : 'Category created');
         closeModal();
         fetchCategories();
       } else {
-        toast.error(response.message || 'Failed to save category');
+        toast.error(response.message || 'Failed to save');
       }
     } catch (error) {
-      toast.error(error?.message || 'Failed to save category');
+      toast.error(error?.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -100,14 +94,12 @@ const AdminCategories = () => {
     try {
       const response = await adminDeleteCategory(deleteTarget.id);
       if (response.success) {
-        toast.success('Category deleted successfully');
+        toast.success('Category deleted');
         setDeleteTarget(null);
         fetchCategories();
-      } else {
-        toast.error(response.message || 'Failed to delete category');
       }
     } catch (error) {
-      toast.error(error?.message || 'Failed to delete category');
+      toast.error(error?.message || 'Failed to delete');
     }
   };
 
@@ -131,15 +123,8 @@ const AdminCategories = () => {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select a valid image');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be smaller than 5MB');
-      return;
-    }
+    if (!file.type.startsWith('image/')) return toast.error('Select a valid image');
+    if (file.size > 5 * 1024 * 1024) return toast.error('Image must be under 5MB');
 
     setFormData((prev) => ({ ...prev, image: file }));
     const reader = new FileReader();
@@ -166,30 +151,31 @@ const AdminCategories = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto pb-8">
+    <div className="max-w-7xl mx-auto pb-8 space-y-6">
       {/* ==========================================
           HEADER
       ========================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 flex items-center gap-3 flex-wrap">
+          <p className="text-[11px] uppercase tracking-kicker font-semibold text-ink-500 mb-2">
+            Organize
+          </p>
+          <h1 className="font-serif text-2xl md:text-3xl font-bold text-ink-800">
             Categories
-            <span className="text-xs md:text-sm font-normal text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-              {categories.length} total
-            </span>
           </h1>
-          <p className="text-sm md:text-base text-gray-500 mt-1">
-            Manage your product categories
+          <p className="text-xs md:text-sm text-ink-500 mt-1.5">
+            {categories.length} {categories.length === 1 ? 'collection' : 'collections'}
           </p>
         </div>
+
         <button
           onClick={() => {
             resetForm();
             setShowModal(true);
           }}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl hover:from-amber-600 hover:to-yellow-600 transition-all shadow-md hover:shadow-lg font-medium text-sm"
+          className="self-start sm:self-auto btn-solid"
         >
-          <PlusIcon className="w-4 h-4 md:w-5 md:h-5" />
+          <PlusIcon className="w-4 h-4" />
           Add Category
         </button>
       </div>
@@ -197,23 +183,23 @@ const AdminCategories = () => {
       {/* ==========================================
           SEARCH
       ========================================== */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 md:p-4 mb-6">
+      <div className="bg-white border border-line rounded-lg p-3 md:p-4">
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+          <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
           <input
             type="text"
             placeholder="Search categories..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 md:pl-12 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all text-sm"
+            className="w-full pl-10 pr-10 py-2.5 bg-cream-100 border border-line rounded focus:border-ink-800 outline-none transition-colors text-sm"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-cream-200 rounded transition-colors"
               aria-label="Clear search"
             >
-              <XMarkIcon className="w-4 h-4 text-gray-400" />
+              <XMarkIcon className="w-3.5 h-3.5 text-ink-500" />
             </button>
           )}
         </div>
@@ -227,16 +213,14 @@ const AdminCategories = () => {
           <LoadingSpinner size="lg" />
         </div>
       ) : filteredCategories.length === 0 ? (
-        <div className="text-center py-16 md:py-20 bg-white rounded-3xl border border-gray-100">
-          <div className="w-20 h-20 md:w-24 md:h-24 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5">
-            <FolderIcon className="w-10 h-10 md:w-12 md:h-12 text-amber-400" />
-          </div>
-          <h3 className="text-xl md:text-2xl font-bold mb-2">
+        <div className="text-center py-20 bg-white border border-line rounded-lg px-4">
+          <FolderIcon className="w-10 h-10 text-ink-300 mx-auto mb-4" />
+          <h3 className="font-serif text-lg font-bold text-ink-800 mb-1">
             {searchTerm ? 'No categories found' : 'No categories yet'}
           </h3>
-          <p className="text-sm md:text-base text-gray-500 mb-6">
+          <p className="text-sm text-ink-500 mb-6">
             {searchTerm
-              ? 'Try adjusting your search terms'
+              ? 'Try a different search'
               : 'Start by creating your first category'}
           </p>
           {!searchTerm && (
@@ -245,25 +229,25 @@ const AdminCategories = () => {
                 resetForm();
                 setShowModal(true);
               }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl hover:from-amber-600 hover:to-yellow-600 transition-all font-medium text-sm shadow-md"
+              className="btn-solid text-xs"
             >
-              <PlusIcon className="w-4 h-4" />
+              <PlusIcon className="w-3.5 h-3.5" />
               Create Category
             </button>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
           {filteredCategories.map((category, index) => (
             <motion.div
               key={category.id}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(index * 0.04, 0.3) }}
-              className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
+              className="group"
             >
-              {/* Image */}
-              <div className="relative aspect-square sm:aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+              {/* Image — square, no overlay */}
+              <div className="relative aspect-square overflow-hidden rounded bg-cream-200 mb-3">
                 {category.image ? (
                   <img
                     src={category.image}
@@ -271,38 +255,38 @@ const AdminCategories = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     onError={(e) => {
                       e.target.src =
-                        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&h=300&fit=crop';
+                        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&h=400&fit=crop';
                     }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <FolderIcon className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 text-gray-300" />
+                    <FolderIcon className="w-10 h-10 text-ink-300" />
                   </div>
                 )}
 
-                {/* Status badge — smaller on mobile */}
-                <div
-                  className={`absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-semibold border ${
+                {/* Status dot top-right */}
+                <span
+                  className={`absolute top-3 right-3 px-2 py-0.5 rounded-sm text-[9px] uppercase tracking-wider font-bold ${
                     category.is_active
-                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                      : 'bg-gray-100 text-gray-500 border-gray-200'
+                      ? 'bg-ink-800 text-cream-100'
+                      : 'bg-cream-100 text-ink-500 border border-line'
                   }`}
                 >
                   {category.is_active ? 'Active' : 'Inactive'}
-                </div>
+                </span>
 
-                {/* Quick edit/delete overlay on hover (desktop only) */}
-                <div className="hidden sm:flex absolute top-2 left-2 sm:top-3 sm:left-3 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Hover quick actions (desktop) */}
+                <div className="hidden md:flex absolute top-3 left-3 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleEdit(category)}
-                    className="p-1.5 bg-white/95 backdrop-blur-sm text-gray-700 hover:text-amber-600 rounded-lg shadow-md transition-colors"
+                    className="p-1.5 bg-cream-100/95 backdrop-blur-sm text-ink-700 hover:bg-ink-800 hover:text-cream-100 rounded transition-colors"
                     aria-label="Edit"
                   >
                     <PencilIcon className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => setDeleteTarget(category)}
-                    className="p-1.5 bg-white/95 backdrop-blur-sm text-gray-700 hover:text-red-600 rounded-lg shadow-md transition-colors"
+                    className="p-1.5 bg-cream-100/95 backdrop-blur-sm text-ink-700 hover:bg-red-500 hover:text-white rounded transition-colors"
                     aria-label="Delete"
                   >
                     <TrashIcon className="w-3.5 h-3.5" />
@@ -311,63 +295,31 @@ const AdminCategories = () => {
               </div>
 
               {/* Content */}
-              <div className="p-2.5 sm:p-3 md:p-4">
-                <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate">
+              <div>
+                <h3 className="text-sm md:text-base font-medium text-ink-800 group-hover:text-burgundy-500 transition-colors line-clamp-1">
                   {category.name}
                 </h3>
 
-                {/* Description — hidden on mobile to keep card compact */}
-                <p className="hidden sm:block text-xs md:text-sm text-gray-500 line-clamp-2 mt-0.5 min-h-[2rem]">
-                  {category.description || 'No description'}
-                </p>
+                {category.description && (
+                  <p className="hidden md:block text-xs text-ink-500 line-clamp-1 mt-1">
+                    {category.description}
+                  </p>
+                )}
 
-                {/* Footer: mobile shows icon buttons, desktop shows date + icons */}
-                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-100">
-                  {/* Mobile: compact action row */}
-                  <div className="flex sm:hidden items-center justify-between gap-1">
-                    <button
-                      onClick={() => handleEdit(category)}
-                      className="flex-1 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50 rounded-lg transition-colors flex items-center justify-center gap-1"
-                    >
-                      <PencilIcon className="w-3.5 h-3.5" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(category)}
-                      className="flex-1 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1"
-                    >
-                      <TrashIcon className="w-3.5 h-3.5" />
-                      Delete
-                    </button>
-                  </div>
-
-                  {/* Desktop: original row with date */}
-                  <div className="hidden sm:flex items-center justify-between">
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => handleEdit(category)}
-                        className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                        title="Edit"
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(category)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        title="Delete"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <span className="text-[10px] md:text-xs text-gray-400">
-                      {category.created_at
-                        ? new Date(category.created_at).toLocaleDateString(
-                            'en-IN',
-                            { day: 'numeric', month: 'short', year: 'numeric' }
-                          )
-                        : '-'}
-                    </span>
-                  </div>
+                {/* Mobile quick actions */}
+                <div className="flex md:hidden items-center gap-1 mt-2.5 pt-2.5 border-t border-line">
+                  <button
+                    onClick={() => handleEdit(category)}
+                    className="flex-1 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-ink-700 hover:bg-cream-100 rounded transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(category)}
+                    className="flex-1 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-red-500 hover:bg-red-50 rounded transition-colors"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -385,46 +337,39 @@ const AdminCategories = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 bg-ink-950/50 backdrop-blur-sm"
               onClick={closeModal}
             />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ scale: 0.97, opacity: 0, y: 12 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md my-auto max-h-[90vh] overflow-y-auto"
+              exit={{ scale: 0.97, opacity: 0, y: 12 }}
+              className="relative bg-white rounded-lg shadow-2xl w-full max-w-md my-auto max-h-[90vh] overflow-y-auto border border-line"
             >
               {/* Header */}
-              <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-5 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-                    <FolderIcon className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900">
-                      {editingCategory ? 'Edit Category' : 'Create Category'}
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      {editingCategory
-                        ? 'Update category info'
-                        : 'Add a new category'}
-                    </p>
-                  </div>
+              <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 py-4 border-b border-line">
+                <div>
+                  <p className="text-[10px] uppercase tracking-kicker font-semibold text-ink-500 mb-1">
+                    {editingCategory ? 'Edit' : 'New'}
+                  </p>
+                  <h3 className="font-serif text-lg font-bold text-ink-800">
+                    {editingCategory ? 'Update Category' : 'Create Category'}
+                  </h3>
                 </div>
                 <button
                   onClick={closeModal}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-1.5 hover:bg-cream-100 rounded transition-colors"
                   aria-label="Close"
                 >
-                  <XMarkIcon className="w-5 h-5 text-gray-400" />
+                  <XMarkIcon className="w-4 h-4 text-ink-500" />
                 </button>
               </div>
 
               {/* Body */}
               <form onSubmit={handleSubmit} className="p-5 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Category Name <span className="text-red-500">*</span>
+                  <label className="block text-[11px] uppercase tracking-wider font-medium text-ink-500 mb-2">
+                    Name <span className="text-burgundy-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -433,13 +378,13 @@ const AdminCategories = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all text-sm"
-                    placeholder="e.g., Necklaces"
+                    className="w-full px-3.5 py-2.5 bg-cream-100 border border-line rounded focus:border-ink-800 outline-none transition-colors text-sm"
+                    placeholder="Necklaces"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-[11px] uppercase tracking-wider font-medium text-ink-500 mb-2">
                     Description
                   </label>
                   <textarea
@@ -448,18 +393,18 @@ const AdminCategories = () => {
                       setFormData({ ...formData, description: e.target.value })
                     }
                     rows="3"
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-transparent focus:bg-white outline-none transition-all text-sm resize-none"
+                    className="w-full px-3.5 py-2.5 bg-cream-100 border border-line rounded focus:border-ink-800 outline-none transition-colors text-sm resize-none"
                     placeholder="Optional short description"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Category Image
+                  <label className="block text-[11px] uppercase tracking-wider font-medium text-ink-500 mb-2">
+                    Image
                   </label>
                   <div className="flex items-center gap-3">
                     {imagePreview && (
-                      <div className="relative w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden border-2 border-amber-200">
+                      <div className="relative w-20 h-20 flex-shrink-0 rounded overflow-hidden border-2 border-ink-800">
                         <img
                           src={imagePreview}
                           alt="Preview"
@@ -473,23 +418,17 @@ const AdminCategories = () => {
                             if (fileInputRef.current)
                               fileInputRef.current.value = '';
                           }}
-                          className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md transition-colors"
-                          aria-label="Remove image"
+                          className="absolute top-1 right-1 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          aria-label="Remove"
                         >
                           <XMarkIcon className="w-3 h-3" />
                         </button>
                       </div>
                     )}
-                    <label
-                      className={`flex-1 px-4 py-4 border-2 border-dashed rounded-xl cursor-pointer transition-all text-center ${
-                        imagePreview
-                          ? 'border-gray-200 hover:border-amber-400 hover:bg-amber-50/30'
-                          : 'border-gray-300 hover:border-amber-400 hover:bg-amber-50/30'
-                      }`}
-                    >
-                      <PhotoIcon className="w-6 h-6 mx-auto text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-500">
-                        {imagePreview ? 'Change image' : 'Click to upload'}
+                    <label className="flex-1 px-4 py-5 border border-dashed border-line-strong hover:border-ink-800 hover:bg-cream-100 rounded cursor-pointer transition-colors text-center">
+                      <PhotoIcon className="w-6 h-6 mx-auto text-ink-400 mb-1" />
+                      <span className="text-[10px] uppercase tracking-wider text-ink-500 font-medium">
+                        {imagePreview ? 'Change image' : 'Upload image'}
                       </span>
                       <input
                         ref={fileInputRef}
@@ -500,35 +439,35 @@ const AdminCategories = () => {
                       />
                     </label>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1.5">
-                    PNG, JPG, WebP • Max 5MB
+                  <p className="text-[10px] uppercase tracking-wider text-ink-400 mt-2">
+                    JPG · PNG · WEBP · Max 5MB
                   </p>
                 </div>
               </form>
 
               {/* Footer */}
-              <div className="sticky bottom-0 bg-white flex gap-3 p-5 pt-4 border-t border-gray-100">
+              <div className="sticky bottom-0 bg-white flex gap-2 px-5 py-4 border-t border-line">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={saving}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium text-gray-700 text-sm disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 border border-line rounded text-[11px] uppercase tracking-wider font-semibold text-ink-700 hover:border-ink-800 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={saving}
-                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl hover:from-amber-600 hover:to-yellow-600 transition-all font-medium flex items-center justify-center gap-2 text-sm shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2.5 bg-ink-800 hover:bg-burgundy-500 text-cream-100 rounded text-[11px] uppercase tracking-wider font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
                   {saving ? (
                     <>
                       <LoadingSpinner size="sm" />
-                      Saving...
+                      Saving
                     </>
                   ) : (
                     <>
-                      <CheckIcon className="w-4 h-4" />
+                      <CheckIcon className="w-3.5 h-3.5" />
                       {editingCategory ? 'Update' : 'Create'}
                     </>
                   )}
@@ -540,7 +479,7 @@ const AdminCategories = () => {
       </AnimatePresence>
 
       {/* ==========================================
-          DELETE CONFIRM MODAL
+          DELETE MODAL
       ========================================== */}
       <AnimatePresence>
         {deleteTarget && (
@@ -549,39 +488,34 @@ const AdminCategories = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 bg-ink-950/50 backdrop-blur-sm"
               onClick={() => setDeleteTarget(null)}
             />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6"
+              exit={{ scale: 0.97, opacity: 0 }}
+              className="relative bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 border border-line"
             >
               <div className="text-center">
-                <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ExclamationTriangleIcon className="w-7 h-7 text-red-600" />
-                </div>
-                <h3 className="font-bold text-lg text-gray-900 mb-1">
-                  Delete Category?
+                <ExclamationTriangleIcon className="w-8 h-8 text-red-500 mx-auto mb-4" />
+                <h3 className="font-serif text-lg font-bold text-ink-800 mb-2">
+                  Delete this category?
                 </h3>
-                <p className="text-sm text-gray-500 mb-6">
-                  Are you sure you want to delete{' '}
-                  <strong className="text-gray-700">
-                    "{deleteTarget.name}"
-                  </strong>
-                  ? This action cannot be undone.
+                <p className="text-xs text-ink-500 mb-6 leading-relaxed">
+                  "{deleteTarget.name}" will be permanently removed. This
+                  cannot be undone.
                 </p>
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <button
                     onClick={() => setDeleteTarget(null)}
-                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium text-gray-700 text-sm"
+                    className="flex-1 px-4 py-2.5 border border-line rounded text-[11px] uppercase tracking-wider font-semibold text-ink-700 hover:border-ink-800 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={confirmDelete}
-                    className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors font-medium text-sm shadow-md"
+                    className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded text-[11px] uppercase tracking-wider font-semibold transition-colors"
                   >
                     Delete
                   </button>

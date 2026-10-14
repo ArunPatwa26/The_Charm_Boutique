@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -9,21 +9,46 @@ import {
   ShoppingBagIcon,
   CreditCardIcon,
   MapPinIcon,
-  CalendarIcon,
   PrinterIcon,
   EnvelopeIcon,
   StarIcon,
-  PencilIcon,
   XMarkIcon,
   QrCodeIcon,
-  ArrowTopRightOnSquareIcon,
+  ArrowUpRightIcon,
   XCircleIcon,
   DocumentDuplicateIcon,
 } from '@heroicons/react/24/outline';
+
 import { getOrderById } from '../services/orderService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PaymentStatusBadge from '../components/common/PaymentStatusBadge';
 import toast from 'react-hot-toast';
+
+// ==========================================
+// STATUS CONFIG
+// ==========================================
+const STATUS_META = {
+  pending: { label: 'Pending', dot: 'bg-ink-400', text: 'text-ink-600' },
+  processing: { label: 'Processing', dot: 'bg-blue-500', text: 'text-blue-700' },
+  shipped: { label: 'Shipped', dot: 'bg-purple-500', text: 'text-purple-700' },
+  delivered: { label: 'Delivered', dot: 'bg-green-600', text: 'text-green-700' },
+  cancelled: { label: 'Cancelled', dot: 'bg-red-500', text: 'text-red-700' },
+};
+
+const STATUS_MESSAGE = {
+  pending: 'Order placed. Awaiting confirmation.',
+  processing: 'Preparing your order for shipping.',
+  shipped: 'On the way to you.',
+  delivered: 'Delivered successfully.',
+  cancelled: 'Order cancelled.',
+};
+
+const TIMELINE_STEPS = [
+  { key: 'pending', label: 'Placed' },
+  { key: 'processing', label: 'Processing' },
+  { key: 'shipped', label: 'Shipped' },
+  { key: 'delivered', label: 'Delivered' },
+];
 
 const OrderDetailsPage = () => {
   const { id } = useParams();
@@ -36,358 +61,399 @@ const OrderDetailsPage = () => {
   const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      fetchOrder();
-    } else {
-      navigate('/orders');
-    }
-  }, [id]);
-
-  const fetchOrder = async () => {
-    setLoading(true);
-    try {
-      const response = await getOrderById(id);
-      if (response.success) {
-        setOrder(response.order);
-      } else {
-        toast.error('Order not found');
+    const fetchOrder = async () => {
+      if (!id) {
         navigate('/orders');
+        return;
       }
-    } catch (error) {
-      toast.error('Failed to load order');
-      navigate('/orders');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: 'bg-amber-100 text-amber-700 border-amber-200',
-      processing: 'bg-blue-100 text-blue-700 border-blue-200',
-      shipped: 'bg-purple-100 text-purple-700 border-purple-200',
-      delivered: 'bg-green-100 text-green-700 border-green-200',
-      cancelled: 'bg-red-100 text-red-700 border-red-200',
+      setLoading(true);
+      try {
+        const response = await getOrderById(id);
+        if (response.success) {
+          setOrder(response.order);
+        } else {
+          toast.error('Order not found');
+          navigate('/orders');
+        }
+      } catch (error) {
+        toast.error('Failed to load order');
+        navigate('/orders');
+      } finally {
+        setLoading(false);
+      }
     };
-    return colors[status] || 'bg-gray-100 text-gray-700 border-gray-200';
-  };
-
-  const getStatusIcon = (status) => {
-    const icons = {
-      pending: ClockIcon,
-      processing: ShoppingBagIcon,
-      shipped: TruckIcon,
-      delivered: CheckCircleIcon,
-      cancelled: ClockIcon,
-    };
-    const Icon = icons[status] || ShoppingBagIcon;
-    return <Icon className="w-5 h-5" />;
-  };
-
-  const getStatusMessage = (status) => {
-    const messages = {
-      pending: 'Your order has been placed and is awaiting confirmation.',
-      processing: 'Your order is being processed and prepared for shipping.',
-      shipped: 'Your order has been shipped and is on its way to you.',
-      delivered: 'Your order has been delivered. We hope you love it!',
-      cancelled: 'Your order has been cancelled.',
-    };
-    return messages[status] || 'Order status updated.';
-  };
-
-  const getPaymentMethodLabel = (method) => {
-    const labels = {
-      upi: 'UPI Payment',
-      cash_on_delivery: 'Cash on Delivery',
-    };
-    return labels[method] || method;
-  };
+    fetchOrder();
+  }, [id, navigate]);
 
   const formatDate = (date) => {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
+    return new Date(date).toLocaleDateString('en-IN', {
       day: 'numeric',
+      month: 'long',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
   };
 
-  const formatPrice = (price) => {
-    return `₹${Number(price || 0).toFixed(2)}`;
-  };
+  const formatPrice = (price) =>
+    `₹${Number(price || 0).toLocaleString('en-IN')}`;
 
-  // ==========================================
-  // EMAIL RECEIPT
-  // ==========================================
+  const handlePrint = () => window.print();
+
   const handleEmailReceipt = async () => {
-    try {
-      toast.loading('Sending email...', { id: 'email' });
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      toast.success('📧 Receipt sent to your email!', { id: 'email' });
-    } catch (error) {
-      toast.error('Failed to send email. Please try again.', { id: 'email' });
-    }
+    toast.loading('Sending receipt…', { id: 'email' });
+    setTimeout(() => {
+      toast.success('Receipt sent to your email', { id: 'email' });
+    }, 1200);
   };
 
-  // ==========================================
-  // PRINT ORDER
-  // ==========================================
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // ==========================================
-  // COPY UPI REFERENCE
-  // ==========================================
   const handleCopyUpiRef = async () => {
     if (!order?.upi_reference) return;
     try {
       await navigator.clipboard.writeText(order.upi_reference);
-      toast.success('UPI reference copied!');
+      toast.success('UPI reference copied');
     } catch {
       toast.error('Failed to copy');
     }
   };
 
-  // ==========================================
-  // WRITE REVIEW
-  // ==========================================
   const handleSubmitReview = async () => {
     if (!reviewComment.trim()) {
-      toast.error('Please write a review comment');
+      toast.error('Please write a review');
       return;
     }
-
     setSubmittingReview(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      toast.success('✅ Review submitted successfully!');
+    setTimeout(() => {
+      toast.success('Review submitted');
       setShowReviewModal(false);
       setReviewComment('');
       setReviewRating(5);
-    } catch (error) {
-      toast.error('Failed to submit review. Please try again.');
-    } finally {
       setSubmittingReview(false);
-    }
+    }, 1200);
   };
 
+  // ==========================================
+  // LOADING
+  // ==========================================
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
+      <div className="min-h-screen flex items-center justify-center bg-cream-100">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Order not found</h2>
-          <Link to="/orders" className="text-gold-600 hover:text-gold-700">
-            Back to orders
-          </Link>
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-cream-100 px-4">
+        <ShoppingBagIcon className="w-14 h-14 text-ink-300 mb-5" />
+        <h2 className="font-serif text-2xl font-bold text-ink-800 mb-2">
+          Order not found
+        </h2>
+        <Link to="/orders" className="btn-outline text-xs mt-4">
+          <ArrowLeftIcon className="w-3.5 h-3.5" />
+          Back to Orders
+        </Link>
       </div>
     );
   }
 
-  // Payment-derived flags
   const orderKey = order.id || order._id;
-  const isUpi = order.payment_method === 'upi';
+  const statusMeta = STATUS_META[order.status] || STATUS_META.pending;
+  const statusMessage = STATUS_MESSAGE[order.status] || '';
   const paymentPending = order.payment_status === 'pending';
   const paymentVerifying = order.payment_status === 'verification_pending';
   const paymentVerified = order.payment_status === 'verified';
   const paymentRejected = order.payment_status === 'rejected';
+  const isUpi = order.payment_method === 'upi';
+
+  // Timeline progress
+  const statusIndex = TIMELINE_STEPS.findIndex((s) => s.key === order.status);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container-custom max-w-4xl">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+    <div className="min-h-screen bg-cream-100 pb-16">
+      {/* ==========================================
+          HEADER
+      ========================================== */}
+      <section className="border-b border-line bg-cream-100">
+        <div className="container-editorial py-6 md:py-8">
           <Link
             to="/orders"
-            className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+            className="inline-flex items-center gap-2 text-xs uppercase tracking-wider font-medium text-ink-500 hover:text-burgundy-500 transition-colors mb-4"
           >
-            <ArrowLeftIcon className="w-5 h-5" />
+            <ArrowLeftIcon className="w-3.5 h-3.5" />
+            Back to Orders
           </Link>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold">Order Details</h1>
-            <p className="text-gray-600">Order #{order.order_number}</p>
-          </div>
-          <PaymentStatusBadge status={order.payment_status} />
-        </div>
 
-        <div className="space-y-6">
-          {/* Payment Alert — UPI pending */}
-          {isUpi && (paymentPending || paymentRejected) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`rounded-2xl shadow-lg p-5 border-l-4 ${
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <p className="kicker mb-3">Order Detail</p>
+              <h1 className="font-serif text-2xl md:text-4xl font-bold text-ink-800">
+                #{order.order_number || 'N/A'}
+              </h1>
+              <p className="text-xs md:text-sm text-ink-500 mt-2">
+                Placed on {formatDate(order.created_at)}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider font-medium">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot}`}
+                />
+                <span className={statusMeta.text}>{statusMeta.label}</span>
+              </span>
+              <PaymentStatusBadge status={order.payment_status} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ==========================================
+          PAYMENT ALERT — Top action banner
+      ========================================== */}
+      {isUpi && (paymentPending || paymentRejected) && (
+        <section className="border-b border-line">
+          <div className="container-editorial py-4">
+            <div
+              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border ${
                 paymentRejected
-                  ? 'bg-red-50 border-red-500'
-                  : 'bg-yellow-50 border-yellow-500'
+                  ? 'bg-red-50/60 border-red-200'
+                  : 'bg-burgundy-50/40 border-burgundy-200'
               }`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex items-start gap-3 flex-1">
-                  {paymentRejected ? (
-                    <XCircleIcon className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <QrCodeIcon className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  )}
-                  <div>
-                    <h3
-                      className={`font-bold ${
-                        paymentRejected ? 'text-red-800' : 'text-yellow-800'
-                      }`}
-                    >
-                      {paymentRejected
-                        ? 'Payment was rejected'
-                        : 'Complete your payment'}
-                    </h3>
-                    <p
-                      className={`text-sm ${
-                        paymentRejected ? 'text-red-700' : 'text-yellow-700'
-                      }`}
-                    >
-                      {paymentRejected
-                        ? order.rejection_reason ||
-                          'Please contact support or re-upload a valid payment screenshot.'
-                        : 'Scan the UPI QR and upload your payment screenshot to confirm your order.'}
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  to={`/payment/upi/${orderKey}`}
-                  className={`flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors ${
-                    paymentRejected
-                      ? 'bg-red-500 hover:bg-red-600'
-                      : 'bg-yellow-500 hover:bg-yellow-600'
-                  }`}
-                >
-                  {paymentRejected ? 'Try Again' : 'Pay Now'}
-                  <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                </Link>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Payment Alert — verification pending */}
-          {isUpi && paymentVerifying && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-blue-50 rounded-2xl shadow-lg p-5 border-l-4 border-blue-500"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1">
-                  <ClockIcon className="w-6 h-6 text-blue-600 flex-shrink-0 animate-pulse" />
-                  <div>
-                    <h3 className="font-bold text-blue-800">
-                      Payment under verification
-                    </h3>
-                    <p className="text-sm text-blue-700">
-                      Our team is verifying your UPI payment. You'll be notified within 24 hours.
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  to={`/payment/status/${orderKey}`}
-                  className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition-colors"
-                >
-                  View Status
-                </Link>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Order Status Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`bg-white rounded-2xl shadow-lg p-6 border-l-4 ${getStatusColor(order.status)}`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-full ${getStatusColor(order.status)}`}>
-                  {getStatusIcon(order.status)}
-                </div>
+              <div className="flex items-start gap-3">
+                {paymentRejected ? (
+                  <XCircleIcon className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <QrCodeIcon className="w-5 h-5 text-burgundy-500 flex-shrink-0 mt-0.5" />
+                )}
                 <div>
-                  <h2 className="text-xl font-bold capitalize">{order.status}</h2>
-                  <p className="text-gray-600 text-sm">{getStatusMessage(order.status)}</p>
+                  <p className="text-sm font-semibold text-ink-800">
+                    {paymentRejected
+                      ? 'Payment was rejected'
+                      : 'Complete your payment'}
+                  </p>
+                  <p className="text-xs text-ink-600 mt-0.5">
+                    {paymentRejected
+                      ? order.rejection_reason ||
+                        'Please try again with a valid payment screenshot.'
+                      : 'Scan the UPI QR and upload your payment screenshot.'}
+                  </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Order Date</p>
-                <p className="font-medium">{formatDate(order.created_at)}</p>
-              </div>
+              <Link
+                to={`/payment/upi/${orderKey}`}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-ink-800 text-cream-100 text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-burgundy-500 transition-colors flex-shrink-0 self-start sm:self-auto"
+              >
+                {paymentRejected ? 'Try Again' : 'Pay Now'}
+                <ArrowUpRightIcon className="w-3 h-3" />
+              </Link>
             </div>
+          </div>
+        </section>
+      )}
 
-            {/* Progress Bar */}
-            <div className="mt-4">
-              <div className="relative">
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>Order Placed</span>
-                  <span>Processing</span>
-                  <span>Shipped</span>
-                  <span>Delivered</span>
-                </div>
-                <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      order.status === 'delivered'
-                        ? 'w-full bg-green-500'
-                        : order.status === 'shipped'
-                        ? 'w-3/4 bg-purple-500'
-                        : order.status === 'processing'
-                        ? 'w-1/2 bg-blue-500'
-                        : order.status === 'pending'
-                        ? 'w-1/4 bg-yellow-500'
-                        : 'w-0'
-                    }`}
-                  />
+      {isUpi && paymentVerifying && (
+        <section className="border-b border-line">
+          <div className="container-editorial py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg bg-blue-50/60 border border-blue-200">
+              <div className="flex items-start gap-3">
+                <ClockIcon className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5 animate-pulse" />
+                <div>
+                  <p className="text-sm font-semibold text-ink-800">
+                    Verifying your payment
+                  </p>
+                  <p className="text-xs text-ink-600 mt-0.5">
+                    We'll confirm your order within 24 hours.
+                  </p>
                 </div>
               </div>
+              <Link
+                to={`/payment/status/${orderKey}`}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 border border-ink-800 text-ink-800 text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-ink-800 hover:text-cream-100 transition-colors flex-shrink-0 self-start sm:self-auto"
+              >
+                View Status
+              </Link>
             </div>
-          </motion.div>
+          </div>
+        </section>
+      )}
 
-          {/* Order Info Grid */}
-          <div className="grid md:grid-cols-3 gap-4">
-            {/* Payment Info Card — REPLACED with richer UPI-aware version */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white rounded-2xl shadow-lg p-6"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <CreditCardIcon className="w-5 h-5 text-gold-500" />
-                <h3 className="font-semibold">Payment</h3>
-              </div>
-              <p className="text-sm text-gray-700 font-medium mb-2">
-                {getPaymentMethodLabel(order.payment_method)}
+      {/* ==========================================
+          MAIN CONTENT
+      ========================================== */}
+      <section className="container-editorial py-8 md:py-10 space-y-8">
+        {/* ---------- STATUS TIMELINE ---------- */}
+        <div className="bg-white border border-line rounded-lg p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <p className="text-[11px] uppercase tracking-kicker font-semibold text-ink-500 mb-1">
+                Order Status
               </p>
-              <PaymentStatusBadge status={order.payment_status} size="sm" />
+              <p className="font-serif text-lg font-bold text-ink-800 capitalize">
+                {statusMeta.label}
+              </p>
+            </div>
+            <p className="text-xs text-ink-500 hidden sm:block text-right max-w-xs">
+              {statusMessage}
+            </p>
+          </div>
 
-              {/* UPI reference for verified payments */}
+          {/* Timeline */}
+          <div className="flex items-center">
+            {TIMELINE_STEPS.map((step, i) => {
+              const isDone = i <= statusIndex && statusIndex !== -1;
+              const isCurrent = i === statusIndex;
+              const isLast = i === TIMELINE_STEPS.length - 1;
+
+              return (
+                <div key={step.key} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-shrink-0">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
+                        isDone
+                          ? 'bg-ink-800 text-cream-100'
+                          : 'bg-cream-200 text-ink-400'
+                      }`}
+                    >
+                      {isDone && !isCurrent ? (
+                        <CheckCircleIcon className="w-3.5 h-3.5" />
+                      ) : (
+                        <span>{i + 1}</span>
+                      )}
+                    </div>
+                    <p
+                      className={`text-[10px] uppercase tracking-wider font-medium mt-2 text-center ${
+                        isDone ? 'text-ink-800' : 'text-ink-400'
+                      }`}
+                    >
+                      {step.label}
+                    </p>
+                  </div>
+
+                  {!isLast && (
+                    <div
+                      className={`flex-1 h-px mx-2 ${
+                        isDone && i < statusIndex
+                          ? 'bg-ink-800'
+                          : 'bg-line'
+                      }`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ---------- TWO COLUMN — Items + Summary ---------- */}
+        <div className="grid lg:grid-cols-12 gap-6 lg:gap-8">
+          {/* LEFT — Items (7 cols) */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Items */}
+            <div className="bg-white border border-line rounded-lg overflow-hidden">
+              <div className="px-5 md:px-6 py-4 border-b border-line flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-kicker font-semibold text-ink-800">
+                  Items
+                </p>
+                <p className="text-xs text-ink-500">
+                  {order.items?.length || 0} item
+                  {order.items?.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+
+              <div className="divide-y divide-line">
+                {(order.items || []).map((item, index) => (
+                  <div
+                    key={index}
+                    className="px-5 md:px-6 py-4 flex items-center gap-4"
+                  >
+                    <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded overflow-hidden bg-cream-200">
+                      <img
+                        src={
+                          item.image ||
+                          'https://via.placeholder.com/100'
+                        }
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.src = 'https://via.placeholder.com/100';
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-ink-800 line-clamp-2">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-ink-500 mt-1">
+                        {formatPrice(item.price)} × {item.quantity}
+                      </p>
+                    </div>
+                    <span className="text-sm font-medium text-ink-800 flex-shrink-0">
+                      {formatPrice(item.price * item.quantity)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Shipping Address */}
+            <div className="bg-white border border-line rounded-lg p-5 md:p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <MapPinIcon className="w-4 h-4 text-ink-800 flex-shrink-0 mt-0.5" />
+                <p className="text-[11px] uppercase tracking-kicker font-semibold text-ink-800">
+                  Shipping Address
+                </p>
+              </div>
+              <div className="text-sm text-ink-700 leading-relaxed pl-7">
+                <p className="font-medium text-ink-800">
+                  {order.shipping_address?.street}
+                </p>
+                <p>
+                  {order.shipping_address?.city},{' '}
+                  {order.shipping_address?.state}{' '}
+                  {order.shipping_address?.zip_code}
+                </p>
+                <p>{order.shipping_address?.country}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT — Summary + Payment (5 cols) */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Payment Info */}
+            <div className="bg-white border border-line rounded-lg p-5 md:p-6">
+              <div className="flex items-start gap-3 mb-5 pb-5 border-b border-line">
+                <CreditCardIcon className="w-4 h-4 text-ink-800 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-[11px] uppercase tracking-kicker font-semibold text-ink-800">
+                    Payment
+                  </p>
+                  <p className="text-sm text-ink-700 mt-1">
+                    {isUpi ? 'UPI Payment' : 'Cash on Delivery'}
+                  </p>
+                </div>
+                <PaymentStatusBadge status={order.payment_status} size="sm" />
+              </div>
+
+              {/* UPI reference if verified */}
               {paymentVerified && order.upi_reference && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-xs text-gray-500 mb-1">UPI Reference</p>
-                  <div className="flex items-center gap-2">
-                    <code className="text-xs font-mono font-semibold text-gray-800 truncate">
+                <div className="mb-4">
+                  <p className="text-[10px] uppercase tracking-wider text-ink-500 mb-1.5">
+                    UPI Reference
+                  </p>
+                  <div className="flex items-center gap-2 p-2.5 bg-cream-100 border border-line rounded">
+                    <code className="text-xs font-mono font-medium text-ink-800 truncate flex-1">
                       {order.upi_reference}
                     </code>
                     <button
                       onClick={handleCopyUpiRef}
-                      className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      className="p-1 hover:bg-white rounded transition-colors flex-shrink-0"
                       title="Copy"
                     >
-                      <DocumentDuplicateIcon className="w-3.5 h-3.5 text-gray-500" />
+                      <DocumentDuplicateIcon className="w-3.5 h-3.5 text-ink-500" />
                     </button>
                   </div>
                 </div>
@@ -395,268 +461,216 @@ const OrderDetailsPage = () => {
 
               {/* Rejection reason */}
               {paymentRejected && order.rejection_reason && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-xs text-red-600 font-medium mb-1">
-                    Rejection reason
+                <div className="mb-4 p-3 bg-red-50/60 border border-red-200 rounded">
+                  <p className="text-[10px] uppercase tracking-wider text-red-600 font-semibold mb-1">
+                    Rejection Reason
                   </p>
-                  <p className="text-xs text-red-700">{order.rejection_reason}</p>
+                  <p className="text-xs text-red-700 leading-relaxed">
+                    {order.rejection_reason}
+                  </p>
                 </div>
               )}
 
-              {/* COD or fallback */}
-              {!isUpi && (
-                <p
-                  className={`text-sm font-medium mt-2 ${
-                    order.is_paid ? 'text-green-600' : 'text-yellow-600'
-                  }`}
-                >
-                  {order.is_paid ? '✓ Paid' : 'Pay on delivery'}
-                </p>
-              )}
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white rounded-2xl shadow-lg p-6"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <CalendarIcon className="w-5 h-5 text-gold-500" />
-                <h3 className="font-semibold">Timeline</h3>
-              </div>
-              {order.paid_at && (
-                <p className="text-sm text-gray-600">
-                  Paid: {formatDate(order.paid_at)}
-                </p>
-              )}
-              {order.delivered_at && (
-                <p className="text-sm text-gray-600">
-                  Delivered: {formatDate(order.delivered_at)}
-                </p>
-              )}
-              {!order.paid_at && !order.delivered_at && (
-                <p className="text-sm text-gray-500">Order in progress</p>
-              )}
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-white rounded-2xl shadow-lg p-6"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <MapPinIcon className="w-5 h-5 text-gold-500" />
-                <h3 className="font-semibold">Shipping</h3>
-              </div>
-              <p className="text-sm text-gray-600">
-                {order.shipping_address?.street}
-              </p>
-              <p className="text-sm text-gray-600">
-                {order.shipping_address?.city}, {order.shipping_address?.state}
-              </p>
-              <p className="text-sm text-gray-600">
-                {order.shipping_address?.zip_code}, {order.shipping_address?.country}
-              </p>
-            </motion.div>
-          </div>
-
-          {/* Order Items */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-white rounded-2xl shadow-lg overflow-hidden"
-          >
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold">Order Items</h3>
-            </div>
-            <div className="divide-y divide-gray-100">
-              {order.items?.map((item, index) => (
-                <div key={index} className="p-6 flex items-center gap-4">
-                  <img
-                    src={item.image || 'https://via.placeholder.com/80'}
-                    alt={item.name}
-                    className="w-20 h-20 object-cover rounded-lg"
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-medium">{item.name}</h4>
-                    <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
-                    <p className="text-sm text-gray-500">Price: {formatPrice(item.price)}</p>
+              {/* Payment timeline */}
+              <div className="space-y-2 pt-2">
+                {order.created_at && (
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-ink-500">Order placed</span>
+                    <span className="text-ink-800 font-medium text-right">
+                      {formatDate(order.created_at)}
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gold-600">
-                      {formatPrice(item.price * item.quantity)}
-                    </p>
+                )}
+                {order.paid_at && (
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-ink-500">Payment received</span>
+                    <span className="text-ink-800 font-medium text-right">
+                      {formatDate(order.paid_at)}
+                    </span>
                   </div>
-                </div>
-              ))}
+                )}
+                {order.delivered_at && (
+                  <div className="flex items-start justify-between gap-3 text-xs">
+                    <span className="text-ink-500">Delivered</span>
+                    <span className="text-ink-800 font-medium text-right">
+                      {formatDate(order.delivered_at)}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Price Summary */}
-            <div className="p-6 bg-gray-50">
-              <div className="max-w-xs ml-auto space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Items Total</span>
-                  <span>{formatPrice(order.items_price)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax (10%)</span>
-                  <span>{formatPrice(order.tax_price)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Shipping</span>
-                  <span>
-                    {order.shipping_price === 0 ? 'Free' : formatPrice(order.shipping_price)}
-                  </span>
-                </div>
-                <div className="border-t border-gray-200 pt-2 mt-2">
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
-                    <span className="text-gold-600">{formatPrice(order.total_price)}</span>
-                  </div>
-                </div>
+            <div className="bg-white border border-line rounded-lg p-5 md:p-6">
+              <p className="text-[11px] uppercase tracking-kicker font-semibold text-ink-800 mb-5 pb-4 border-b border-line">
+                Summary
+              </p>
+
+              <div className="space-y-3 pb-4 border-b border-line">
+                <SummaryRow
+                  label="Subtotal"
+                  value={formatPrice(order.items_price)}
+                />
+                <SummaryRow
+                  label="Tax (10%)"
+                  value={formatPrice(order.tax_price)}
+                />
+                <SummaryRow
+                  label="Shipping"
+                  value={
+                    order.shipping_price === 0
+                      ? 'Free'
+                      : formatPrice(order.shipping_price)
+                  }
+                  isFree={order.shipping_price === 0}
+                />
+              </div>
+
+              <div className="pt-4 flex justify-between items-baseline">
+                <span className="text-[11px] uppercase tracking-kicker font-semibold text-ink-800">
+                  Total
+                </span>
+                <span className="font-serif text-2xl font-bold text-ink-800">
+                  {formatPrice(order.total_price)}
+                </span>
               </div>
             </div>
-          </motion.div>
-
-          {/* Action Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-wrap gap-4"
-          >
-            <button
-              onClick={handlePrint}
-              className="px-6 py-3 border-2 border-gray-300 rounded-full hover:bg-gray-50 transition-all duration-300 flex items-center gap-2"
-            >
-              <PrinterIcon className="w-5 h-5" />
-              Print Order
-            </button>
-
-            <button
-              onClick={handleEmailReceipt}
-              className="px-6 py-3 border-2 border-gold-300 text-gold-600 rounded-full hover:bg-gold-50 transition-all duration-300 flex items-center gap-2"
-            >
-              <EnvelopeIcon className="w-5 h-5" />
-              Email Receipt
-            </button>
-
-            {order.status === 'delivered' && (
-              <button
-                onClick={() => setShowReviewModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-gold-500 to-yellow-500 text-white rounded-full hover:from-gold-600 hover:to-yellow-600 transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg"
-              >
-                <PencilIcon className="w-5 h-5" />
-                Write a Review
-              </button>
-            )}
-
-            <Link
-              to="/products"
-              className="px-6 py-3 border-2 border-gray-300 rounded-full hover:bg-gray-50 transition-all duration-300"
-            >
-              Continue Shopping
-            </Link>
-          </motion.div>
+          </div>
         </div>
-      </div>
+
+        {/* ---------- ACTIONS ---------- */}
+        <div className="pt-6 border-t border-line flex flex-wrap gap-2">
+          <button
+            onClick={handlePrint}
+            className="inline-flex items-center gap-2 px-4 py-2.5 border border-line rounded text-[11px] uppercase tracking-wider font-semibold text-ink-800 hover:border-ink-800 transition-colors"
+          >
+            <PrinterIcon className="w-3.5 h-3.5" />
+            Print
+          </button>
+
+          <button
+            onClick={handleEmailReceipt}
+            className="inline-flex items-center gap-2 px-4 py-2.5 border border-line rounded text-[11px] uppercase tracking-wider font-semibold text-ink-800 hover:border-ink-800 transition-colors"
+          >
+            <EnvelopeIcon className="w-3.5 h-3.5" />
+            Email Receipt
+          </button>
+
+          {order.status === 'delivered' && (
+            <button
+              onClick={() => setShowReviewModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-ink-800 text-cream-100 rounded text-[11px] uppercase tracking-wider font-semibold hover:bg-burgundy-500 transition-colors"
+            >
+              <StarIcon className="w-3.5 h-3.5" />
+              Write Review
+            </button>
+          )}
+
+          <Link
+            to="/products"
+            className="inline-flex items-center gap-2 px-4 py-2.5 border border-line rounded text-[11px] uppercase tracking-wider font-semibold text-ink-800 hover:border-ink-800 transition-colors ml-auto"
+          >
+            Continue Shopping
+          </Link>
+        </div>
+      </section>
 
       {/* ==========================================
           REVIEW MODAL
       ========================================== */}
-      {showReviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setShowReviewModal(false)}
-          />
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6"
-          >
-            <button
+      <AnimatePresence>
+        {showReviewModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-ink-900/50 backdrop-blur-sm"
               onClick={() => setShowReviewModal(false)}
-              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative bg-white rounded-lg border border-line shadow-2xl w-full max-w-md p-6"
             >
-              <XMarkIcon className="w-5 h-5 text-gray-400" />
-            </button>
-
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-gold-100 flex items-center justify-center mx-auto mb-3">
-                <StarIcon className="w-8 h-8 text-gold-500" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900">Write a Review</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Share your experience with this order
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Rating
-                </label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setReviewRating(star)}
-                      className="focus:outline-none"
-                    >
-                      <StarIcon
-                        className={`w-8 h-8 transition-colors ${
-                          star <= reviewRating
-                            ? 'text-yellow-400 fill-yellow-400'
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Review
-                </label>
-                <textarea
-                  value={reviewComment}
-                  onChange={(e) => setReviewComment(e.target.value)}
-                  rows="4"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold-400 focus:border-transparent outline-none transition-shadow resize-none"
-                  placeholder="Share your experience with this product..."
-                />
-              </div>
-
               <button
-                onClick={handleSubmitReview}
-                disabled={submittingReview}
-                className="w-full py-3 bg-gradient-to-r from-gold-500 to-yellow-500 text-white rounded-xl hover:from-gold-600 hover:to-yellow-600 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                onClick={() => setShowReviewModal(false)}
+                className="absolute top-4 right-4 p-2 hover:bg-cream-100 rounded-full transition-colors"
+                aria-label="Close"
               >
-                {submittingReview ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <StarIcon className="w-5 h-5" />
-                    Submit Review
-                  </>
-                )}
+                <XMarkIcon className="w-4 h-4 text-ink-500" />
               </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+
+              <p className="kicker mb-3">Feedback</p>
+              <h3 className="font-serif text-xl font-bold text-ink-800 mb-5">
+                Write a Review
+              </h3>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider font-medium text-ink-500 mb-2.5">
+                    Your Rating
+                  </label>
+                  <div className="flex gap-1.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewRating(star)}
+                        className="focus:outline-none transition-transform hover:scale-110"
+                      >
+                        <StarIcon
+                          className={`w-8 h-8 transition-colors ${
+                            star <= reviewRating
+                              ? 'text-ink-800 fill-ink-800'
+                              : 'text-ink-300'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider font-medium text-ink-500 mb-2.5">
+                    Your Review
+                  </label>
+                  <textarea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    rows="4"
+                    className="input-editorial resize-none"
+                    placeholder="Share your experience…"
+                  />
+                </div>
+
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={submittingReview}
+                  className="btn-solid w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingReview ? 'Submitting…' : 'Submit Review'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
+// ==========================================
+// SUMMARY ROW
+// ==========================================
+const SummaryRow = ({ label, value, isFree }) => (
+  <div className="flex justify-between text-sm">
+    <span className="text-ink-600">{label}</span>
+    <span className="font-medium text-ink-800">
+      {isFree ? <span className="text-burgundy-500">Free</span> : value}
+    </span>
+  </div>
+);
 
 export default OrderDetailsPage;

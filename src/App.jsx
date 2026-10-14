@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 
 import { Toaster } from "react-hot-toast";
+
 import {
   QueryClient,
   QueryClientProvider,
@@ -13,7 +14,6 @@ import {
 
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
-
 
 // ==========================================
 // ADMIN PAGES
@@ -28,61 +28,60 @@ import AdminAddProduct from "./pages/Admin/AdminAddProduct";
 import AdminEditProduct from "./pages/Admin/AdminEditProduct";
 import AdminAnalytics from "./pages/Admin/AdminAnalytics";
 import AdminSettings from "./pages/Admin/AdminSettings";
-
-
-import CategoriesPage from "./pages/CategoriesPage";
-import CategoryProductsPage from "./pages/CategoryProductsPage";
-
+import AdminPaymentsPage from "./pages/Admin/AdminPaymentsPage";
 
 // ==========================================
 // USER PAGES
 // ==========================================
 
+import CategoriesPage from "./pages/CategoriesPage";
+import CategoryProductsPage from "./pages/CategoryProductsPage";
+
 import OrderDetailsPage from "./pages/OrderDetailsPage";
 import WishlistPage from "./pages/WishlistPage";
 
-import Layout from "./components/layout/Layout";
-
-import HomePage from "./components/home/HomePage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailsPage from "./pages/ProductDetailsPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import OrdersPage from "./pages/OrdersPage";
-import ProfilePage from "./pages/ProfilePage";
 
-import AboutUsPage from './pages/AboutUsPage';
-import ContactUsPage from './pages/ContactUsPage';
-import HelpCenterPage from './pages/HelpCenterPage';
-import ReturnsPolicyPage from './pages/ReturnsPolicyPage';
-import ShippingInfoPage from './pages/ShippingInfoPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
-import CookiePolicyPage from './pages/CookiePolicyPage';
-import SitemapPage from './pages/SitemapPage';
-import ComingSoonPage from './pages/ComingSoonPage';
+import AboutUsPage from "./pages/AboutUsPage";
+
+
+// ==========================================
+// LAYOUT & HOME
+// ==========================================
+
+import Layout from "./components/layout/Layout";
+import HomePage from "./components/home/HomePage";
+
+// ==========================================
+// AUTHENTICATION
+// ==========================================
 
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 
-
 // ==========================================
-// PROTECTED ROUTE
+// PROTECTED ROUTES
 // ==========================================
 
 import ProtectedRoute from "./components/common/ProtectedRoute";
+
+// ==========================================
+// PAYMENT PAGES
+// ==========================================
+
 import UPIPaymentPage from "./pages/UPIPaymentPage";
 import PaymentStatusPage from "./pages/PaymentStatusPage";
-import AdminPaymentsPage from "./pages/Admin/AdminPaymentsPage";
-
 
 // ==========================================
 // REACT QUERY
 // ==========================================
 
 const queryClient = new QueryClient();
-
 
 // ==========================================
 // APP
@@ -91,16 +90,10 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-
       <AuthProvider>
-
         <CartProvider>
-
           <Router>
-
-            {/* ==================================
-                TOAST NOTIFICATIONS
-            =================================== */}
+            {/* Toast Notifications */}
 
             <Toaster
               position="top-right"
@@ -123,75 +116,28 @@ function App() {
               }}
             />
 
-
-            {/* ==================================
-                ROUTES
-            =================================== */}
+            {/* Application Routes */}
 
             <Routes>
-
-
               {/* ==================================
                   PUBLIC ROUTES
-              =================================== */}
+              ================================== */}
 
-              <Route
-                path="/"
-                element={<Layout />}
-              >
+              <Route path="/" element={<Layout />}>
+                {/* Home Page */}
+
+                <Route index element={<HomePage />} />
+
+                {/* Information Pages */}
 
                 <Route
-                  index
-                  element={<HomePage />}
+                  path="about"
+                  element={<AboutUsPage />}
                 />
 
-                <Route path="about" element={<AboutUsPage />} />
-<Route path="contact" element={<ContactUsPage />} />
-<Route path="help" element={<HelpCenterPage />} />
-<Route path="returns" element={<ReturnsPolicyPage />} />
-<Route path="shipping" element={<ShippingInfoPage />} />
-<Route path="privacy" element={<PrivacyPolicyPage />} />
-<Route path="terms" element={<TermsOfServicePage />} />
-<Route path="cookies" element={<CookiePolicyPage />} />
-<Route path="sitemap" element={<SitemapPage />} />
+               
 
-{/* Placeholder Pages */}
-<Route
-  path="careers"
-  element={
-    <ComingSoonPage
-      title="Careers"
-      description="We're growing! Open positions will be posted here soon."
-    />
-  }
-/>
-<Route
-  path="sustainability"
-  element={
-    <ComingSoonPage
-      title="Sustainability"
-      description="Learn about our ethical sourcing and environmental initiatives."
-    />
-  }
-/>
-<Route
-  path="press"
-  element={
-    <ComingSoonPage
-      title="Press"
-      description="Press releases, media kit, and brand assets coming soon."
-    />
-  }
-/>
-<Route
-  path="blog"
-  element={
-    <ComingSoonPage
-      title="Blog"
-      description="Jewellery trends, care tips, and styling guides coming soon."
-    />
-  }
-/>
+                {/* Products */}
 
                 <Route
                   path="products"
@@ -203,10 +149,26 @@ function App() {
                   element={<ProductDetailsPage />}
                 />
 
+                {/* Categories */}
+
+                <Route
+                  path="categories"
+                  element={<CategoriesPage />}
+                />
+
+                <Route
+                  path="categories/:id"
+                  element={<CategoryProductsPage />}
+                />
+
+                {/* Cart */}
+
                 <Route
                   path="cart"
                   element={<CartPage />}
                 />
+
+                {/* Authentication */}
 
                 <Route
                   path="login"
@@ -217,97 +179,99 @@ function App() {
                   path="register"
                   element={<Register />}
                 />
-
-                  <Route path="categories" element={<CategoriesPage />} />
-<Route path="categories/:id" element={<CategoryProductsPage />} />
-
               </Route>
-
 
               {/* ==================================
                   PROTECTED USER ROUTES
-              =================================== */}
+              ================================== */}
 
-              <Route
-                element={<ProtectedRoute />}
-              >
+              <Route element={<ProtectedRoute />}>
+                {/* Checkout */}
 
                 <Route
                   path="/checkout"
                   element={<CheckoutPage />}
                 />
+
+                {/* UPI Payment */}
+
                 <Route
                   path="/payment/upi/:orderId"
                   element={<UPIPaymentPage />}
                 />
+
+                {/* Payment Status */}
 
                 <Route
                   path="/payment/status/:orderId"
                   element={<PaymentStatusPage />}
                 />
 
-                
-
+                {/* Wishlist */}
 
                 <Route
                   path="/wishlist"
                   element={<WishlistPage />}
                 />
 
+                {/* Order Details */}
+
                 <Route
                   path="/orders/:id"
                   element={<OrderDetailsPage />}
                 />
+
+                {/* Order Confirmation */}
 
                 <Route
                   path="/order-confirmation"
                   element={<OrderConfirmation />}
                 />
 
+                {/* My Orders */}
+
                 <Route
                   path="/orders"
                   element={<OrdersPage />}
                 />
 
-                <Route
-                  path="/profile"
-                  element={<ProfilePage />}
-                />
-
+                {/* Profile route removed because
+                    ProfilePage.jsx is missing. */}
               </Route>
-            
-
 
               {/* ==================================
                   ADMIN ROUTES
-              =================================== */}
+              ================================== */}
 
               <Route
-                element={
-                  <ProtectedRoute adminOnly />
-                }
+                element={<ProtectedRoute adminOnly />}
               >
-
                 <Route
                   path="/admin"
                   element={<AdminLayout />}
                 >
+                  {/* Admin Dashboard */}
 
                   <Route
                     index
                     element={<AdminDashboard />}
                   />
 
+                  {/* Payments */}
+
                   <Route
-                    path="/admin/payments"
+                    path="payments"
                     element={<AdminPaymentsPage />}
                   />
 
+                  {/* Orders */}
 
                   <Route
                     path="orders"
                     element={<AdminOrders />}
                   />
+
+                  {/* Products */}
 
                   <Route
                     path="products"
@@ -324,25 +288,32 @@ function App() {
                     element={<AdminEditProduct />}
                   />
 
+                  {/* Categories */}
+
                   <Route
                     path="categories"
                     element={<AdminCategories />}
                   />
 
-                  <Route path="analytics" element={<AdminAnalytics />} />     {/* ✅ NEW */}
-    <Route path="settings" element={<AdminSettings />} />  
+                  {/* Analytics */}
 
+                  <Route
+                    path="analytics"
+                    element={<AdminAnalytics />}
+                  />
+
+                  {/* Settings */}
+
+                  <Route
+                    path="settings"
+                    element={<AdminSettings />}
+                  />
                 </Route>
-
               </Route>
-
 
               {/* ==================================
                   UNKNOWN ROUTES
-
-                  Any route that does not exist
-                  will redirect to homepage
-              =================================== */}
+              ================================== */}
 
               <Route
                 path="*"
@@ -353,20 +324,12 @@ function App() {
                   />
                 }
               />
-
-
             </Routes>
-
           </Router>
-
         </CartProvider>
-
       </AuthProvider>
-
     </QueryClientProvider>
   );
 }
 
-
 export default App;
-

@@ -9,24 +9,28 @@ import {
   ShieldCheckIcon,
   ArrowLeftIcon,
   ShareIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CheckIcon,
   MinusIcon,
   PlusIcon,
-  ArrowRightIcon,
-  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
+
 import { getProductById, getProducts } from '../services/productService';
-import { getWishlist, addToWishlistAPI, removeFromWishlistAPI } from '../services/wishlistService';
+import {
+  getWishlist,
+  addToWishlistAPI,
+  removeFromWishlistAPI,
+} from '../services/wishlistService';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ProductCard from '../components/products/ProductCard';
 import toast from 'react-hot-toast';
 
-const FALLBACK_IMAGE = 'https://via.placeholder.com/600';
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=900&h=1100&fit=crop';
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
@@ -43,98 +47,64 @@ const ProductDetailsPage = () => {
   const [isWishlist, setIsWishlist] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [openSection, setOpenSection] = useState('description');
 
-  // ==========================================
-  // FETCH PRODUCT + RELATED
-  // ==========================================
   useEffect(() => {
-    fetchProduct();
-    window.scrollTo(0, 0);
-  }, [id]);
+    const fetchProduct = async () => {
+      setLoading(true);
+      setRelatedProducts([]);
+      window.scrollTo(0, 0);
 
-  const fetchProduct = async () => {
-    setLoading(true);
-    setRelatedProducts([]);
-    try {
-      const response = await getProductById(id);
-      if (response.success) {
-        setProduct(response.product);
-        setSelectedImage(0);
-        setQuantity(1);
+      try {
+        const response = await getProductById(id);
+        if (response.success) {
+          setProduct(response.product);
+          setSelectedImage(0);
+          setQuantity(1);
+          setOpenSection('description');
 
-        // Check wishlist status
-        if (isAuthenticated) {
-          checkWishlistStatus(response.product.id);
+          if (isAuthenticated) {
+            checkWishlistStatus(response.product.id);
+          }
+          fetchRelated(response.product);
+        } else {
+          toast.error('Product not found');
         }
-
-        // Fetch related products
-        fetchRelated(response.product);
-      } else {
+      } catch (error) {
+        console.error('Failed to fetch product:', error);
         toast.error('Product not found');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to fetch product:', error);
-      toast.error('Product not found');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchProduct();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const fetchRelated = async (currentProduct) => {
     setRelatedLoading(true);
     try {
       let related = [];
-
-      // ==========================================
-      // STRATEGY 1: Same category products
-      // ==========================================
       const categoryId =
         typeof currentProduct.category === 'string'
           ? currentProduct.category
           : currentProduct.category?.$oid || currentProduct.category?._id;
 
       if (categoryId) {
-        const response = await getProducts({
-          category: categoryId,
-          limit: 10,
-        });
-
+        const response = await getProducts({ category: categoryId, limit: 10 });
         if (response.success && response.products?.length > 0) {
           related = response.products.filter((p) => p.id !== currentProduct.id);
         }
       }
 
-      // ==========================================
-      // STRATEGY 2: Fallback — highest rated products
-      // ==========================================
       if (related.length < 4) {
-        const fallbackRes = await getProducts({
-          limit: 10,
-          sort_by: 'rating',
-        });
-
+        const fallbackRes = await getProducts({ limit: 10, sort_by: 'rating' });
         if (fallbackRes.success) {
-          const fallbackProducts = (fallbackRes.products || []).filter(
-            (p) =>
-              p.id !== currentProduct.id &&
-              !related.some((r) => r.id === p.id)
+          const fb = (fallbackRes.products || []).filter(
+            (p) => p.id !== currentProduct.id && !related.some((r) => r.id === p.id)
           );
-          related = [...related, ...fallbackProducts];
-        }
-      }
-
-      // ==========================================
-      // STRATEGY 3: Last resort — any products
-      // ==========================================
-      if (related.length < 4) {
-        const allRes = await getProducts({ limit: 12 });
-        if (allRes.success) {
-          const allProducts = (allRes.products || []).filter(
-            (p) =>
-              p.id !== currentProduct.id &&
-              !related.some((r) => r.id === p.id)
-          );
-          related = [...related, ...allProducts];
+          related = [...related, ...fb];
         }
       }
 
@@ -151,47 +121,36 @@ const ProductDetailsPage = () => {
     try {
       const response = await getWishlist();
       if (response.success) {
-        const exists = response.wishlist?.some((item) => item.id === productId);
-        setIsWishlist(!!exists);
+        setIsWishlist(!!response.wishlist?.some((item) => item.id === productId));
       }
     } catch (error) {
       console.error('Wishlist check error:', error);
     }
   };
 
-  // ==========================================
-  // ACTIONS
-  // ==========================================
   const handleAddToCart = async () => {
     const success = await addToCart(product.id, quantity);
-    if (success) {
-      toast.success(`${quantity} × ${product.name} added to cart!`);
-    }
+    if (success) toast.success('Added to cart');
   };
 
   const handleBuyNow = async () => {
     const success = await addToCart(product.id, quantity);
-    if (success) {
-      navigate('/cart');
-    }
+    if (success) navigate('/cart');
   };
 
   const handleWishlist = async () => {
     if (!isAuthenticated) {
-      toast.error('Please login to add items to wishlist');
+      toast.error('Please log in to save items');
       return;
     }
-
     setWishlistLoading(true);
     try {
       if (isWishlist) {
         await removeFromWishlistAPI(product.id);
         setIsWishlist(false);
-        toast.success('Removed from wishlist');
       } else {
         await addToWishlistAPI(product.id);
         setIsWishlist(true);
-        toast.success('Added to wishlist');
       }
     } catch (error) {
       toast.error(error?.message || 'Failed to update wishlist');
@@ -208,12 +167,12 @@ const ProductDetailsPage = () => {
 
   const handleShare = async (platform) => {
     const url = window.location.href;
-    const text = `Check out this beautiful ${product.name} at AI Jewellery Shop!`;
+    const text = `Check out this ${product.name} at The Charm Boutique`;
 
     try {
       if (platform === 'copy') {
         await navigator.clipboard.writeText(url);
-        toast.success('Link copied to clipboard!');
+        toast.success('Link copied');
       } else if (platform === 'whatsapp') {
         window.open(
           `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`,
@@ -233,60 +192,45 @@ const ProductDetailsPage = () => {
           )}`,
           '_blank'
         );
-      } else if (platform === 'native' && navigator.share) {
-        await navigator.share({ title: product.name, text, url });
       }
       setShowShareMenu(false);
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        toast.error('Failed to share');
-      }
+    } catch (err) {
+      if (err.name !== 'AbortError') toast.error('Failed to share');
     }
   };
 
-  // ==========================================
-  // FORMATTED DESCRIPTION
-  // ==========================================
   const renderedDescription = useMemo(() => {
     if (!product?.description) return null;
     return renderFormattedDescription(product.description);
   }, [product?.description]);
 
-  // ==========================================
-  // LOADING STATE
-  // ==========================================
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-cream-100">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
-  // ==========================================
-  // NOT FOUND STATE
-  // ==========================================
   if (!product) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gray-50">
-        <ShoppingBagIcon className="w-20 h-20 text-gray-300 mb-4" />
-        <h2 className="text-2xl font-bold text-gray-900 mb-3">
-          Product not found
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-cream-100">
+        <ShoppingBagIcon className="w-14 h-14 text-ink-300 mb-5" />
+        <h2 className="font-serif text-2xl font-bold text-ink-800 mb-2">
+          Piece not found
         </h2>
-        <p className="text-gray-500 mb-6 text-center">
-          The product you're looking for doesn't exist or has been removed.
+        <p className="text-sm text-ink-500 mb-6 text-center max-w-sm">
+          The piece you're looking for doesn't exist or has been removed.
         </p>
-        <Link
-          to="/products"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-full hover:bg-amber-600 transition-colors font-medium"
-        >
-          <ArrowLeftIcon className="w-4 h-4" />
-          Back to Products
+        <Link to="/products" className="btn-outline text-xs">
+          <ArrowLeftIcon className="w-3.5 h-3.5" />
+          Back to Shop
         </Link>
       </div>
     );
   }
 
+  const isOutOfStock = product.stock === 0;
   const discountPercentage = product.discount_price
     ? Math.round(((product.price - product.discount_price) / product.price) * 100)
     : 0;
@@ -296,580 +240,574 @@ const ProductDetailsPage = () => {
       ? product.images
       : [product.main_image || FALLBACK_IMAGE];
 
+  const specs = [
+    { label: 'Material', value: product.material },
+    { label: 'Gemstone', value: product.gemstone },
+    { label: 'Weight', value: product.weight ? `${product.weight} g` : null },
+    { label: 'Category', value: product.category_name },
+  ].filter((s) => s.value);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ==========================================
-          BREADCRUMB
-      ========================================== */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="container-custom py-3 md:py-4">
-          <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-gray-500 overflow-x-auto whitespace-nowrap">
-            <Link to="/" className="hover:text-amber-600 transition-colors">
+    <div className="min-h-screen bg-cream-100 pb-24 lg:pb-0">
+      {/* BREADCRUMB */}
+      <div className="border-b border-line bg-cream-100">
+        <div className="container-editorial py-3.5">
+          <nav className="flex items-center gap-2 text-xs text-ink-500 overflow-x-auto whitespace-nowrap scrollbar-hide">
+            <Link to="/" className="hover:text-burgundy-500 transition-colors">
               Home
             </Link>
-            <span className="text-gray-300">/</span>
-            <Link to="/products" className="hover:text-amber-600 transition-colors">
-              Products
+            <span className="text-ink-300">/</span>
+            <Link
+              to="/products"
+              className="hover:text-burgundy-500 transition-colors"
+            >
+              Shop
             </Link>
-            {product.category && (
+            {product.category_name && (
               <>
-                <span className="text-gray-300">/</span>
-                <Link
-                  to={`/categories/${product.category}`}
-                  className="hover:text-amber-600 transition-colors"
-                >
-                  {product.category_name || 'Category'}
-                </Link>
+                <span className="text-ink-300">/</span>
+                <span className="text-ink-700 truncate max-w-[160px]">
+                  {product.category_name}
+                </span>
               </>
             )}
-            <span className="text-gray-300">/</span>
-            <span className="text-gray-900 font-medium truncate max-w-[150px] md:max-w-xs">
-              {product.name}
-            </span>
-          </div>
+          </nav>
         </div>
       </div>
 
-      {/* ==========================================
-          MAIN PRODUCT SECTION
-      ========================================== */}
-      <div className="container-custom py-6 md:py-10">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+      {/* MAIN */}
+      <section className="container-editorial py-6 md:py-10">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-14">
           {/* ==========================================
-              LEFT: IMAGE GALLERY
+              LEFT — Image Gallery
+              CHANGED: max-w to prevent image dominance
           ========================================== */}
-          <div className="lg:sticky lg:top-24 lg:self-start">
-            <div className="relative">
-              <motion.div
-                key={selectedImage}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="bg-white rounded-2xl md:rounded-3xl overflow-hidden shadow-sm border border-gray-100 relative"
-              >
-                <img
-                  src={images[selectedImage] || FALLBACK_IMAGE}
-                  alt={product.name}
-                  className="w-full h-[320px] sm:h-[420px] md:h-[520px] object-cover"
-                  onError={(e) => {
-                    e.target.src = FALLBACK_IMAGE;
-                  }}
-                />
-
-                {discountPercentage > 0 && (
-                  <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1.5 rounded-full text-xs md:text-sm font-bold shadow-lg">
-                    -{discountPercentage}% OFF
-                  </div>
-                )}
-
-                <button
-                  onClick={handleWishlist}
-                  disabled={wishlistLoading}
-                  className="absolute top-4 right-4 w-10 h-10 md:w-12 md:h-12 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110 disabled:opacity-50"
-                  aria-label="Wishlist"
-                >
-                  {isWishlist ? (
-                    <HeartSolidIcon className="w-5 h-5 md:w-6 md:h-6 text-red-500" />
-                  ) : (
-                    <HeartIcon className="w-5 h-5 md:w-6 md:h-6 text-gray-600" />
-                  )}
-                </button>
-              </motion.div>
-
-              {images.length > 1 && (
-                <>
-                  <button
-                    onClick={() =>
-                      setSelectedImage((prev) =>
-                        prev === 0 ? images.length - 1 : prev - 1
-                      )
-                    }
-                    className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-10 h-10 md:w-11 md:h-11 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
-                    aria-label="Previous image"
-                  >
-                    <ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6" />
-                  </button>
-                  <button
-                    onClick={() =>
-                      setSelectedImage((prev) =>
-                        prev === images.length - 1 ? 0 : prev + 1
-                      )
-                    }
-                    className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 w-10 h-10 md:w-11 md:h-11 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
-                    aria-label="Next image"
-                  >
-                    <ChevronRightIcon className="w-5 h-5 md:w-6 md:h-6" />
-                  </button>
-                </>
-              )}
-
-              {images.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur-sm">
-                  {selectedImage + 1} / {images.length}
-                </div>
-              )}
-            </div>
-
-            {images.length > 1 && (
-              <div className="flex gap-2 md:gap-3 mt-3 md:mt-4 overflow-x-auto pb-2">
-                {images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`
-                      flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border-2 transition-all duration-300
-                      ${
-                        selectedImage === index
-                          ? 'border-amber-500 ring-2 ring-amber-200 shadow-md'
-                          : 'border-gray-200 hover:border-amber-300'
-                      }
-                    `}
-                  >
-                    <img
-                      src={image}
-                      alt={`${product.name} ${index + 1}`}
-                      className="w-full h-full object-cover"
+          <div>
+            <div className="lg:sticky lg:top-24">
+              {/* Main Image — REDUCED MAX WIDTH + BETTER ASPECT */}
+              <div className="max-w-[480px] mx-auto lg:mx-0">
+                <div className="relative aspect-square overflow-hidden rounded-lg bg-cream-200">
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={selectedImage}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                      src={images[selectedImage] || FALLBACK_IMAGE}
+                      alt={product.name}
+                      className="absolute inset-0 w-full h-full object-cover"
                       onError={(e) => {
                         e.target.src = FALLBACK_IMAGE;
                       }}
                     />
-                  </button>
-                ))}
+                  </AnimatePresence>
+
+                  {/* Discount badge */}
+                  {discountPercentage > 0 && (
+                    <span className="absolute top-4 left-4 bg-ink-800 text-cream-100 text-[11px] font-semibold tracking-wide px-2.5 py-1 rounded-sm">
+                      {discountPercentage}% OFF
+                    </span>
+                  )}
+
+                  {/* Sold out */}
+                  {isOutOfStock && (
+                    <div className="absolute inset-0 bg-cream-100/70 backdrop-blur-[2px] flex items-center justify-center">
+                      <span className="bg-ink-800 text-cream-100 text-[11px] font-semibold tracking-wider uppercase px-4 py-2 rounded-sm">
+                        Sold Out
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Nav arrows */}
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        onClick={() =>
+                          setSelectedImage((p) =>
+                            p === 0 ? images.length - 1 : p - 1
+                          )
+                        }
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center bg-cream-100/90 backdrop-blur rounded-full hover:bg-cream-100 transition-colors"
+                        aria-label="Previous"
+                      >
+                        <ChevronLeftIcon className="w-4 h-4 text-ink-800" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          setSelectedImage((p) =>
+                            p === images.length - 1 ? 0 : p + 1
+                          )
+                        }
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center bg-cream-100/90 backdrop-blur rounded-full hover:bg-cream-100 transition-colors"
+                        aria-label="Next"
+                      >
+                        <ChevronRightIcon className="w-4 h-4 text-ink-800" />
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Thumbnails — smaller */}
+                {images.length > 1 && (
+                  <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
+                    {images.map((img, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedImage(i)}
+                        className={`flex-shrink-0 w-14 h-14 md:w-16 md:h-16 overflow-hidden rounded border-2 transition-colors ${
+                          selectedImage === i
+                            ? 'border-ink-800'
+                            : 'border-line hover:border-line-strong'
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt={`View ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* ==========================================
-              RIGHT: PRODUCT INFO
+              RIGHT — Info
           ========================================== */}
-          <div className="space-y-5 md:space-y-6">
-            {/* Category + Badges */}
-            <div className="flex flex-wrap items-center gap-2">
+          <div>
+            {product.category_name && (
               <Link
                 to={`/categories/${product.category}`}
-                className="text-xs md:text-sm text-amber-700 font-semibold bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-full transition-colors"
+                className="kicker inline-block mb-3 hover:text-ink-800 transition-colors"
               >
-                {product.category_name || 'Jewellery'}
+                {product.category_name}
               </Link>
+            )}
 
-              {product.is_featured && (
-                <span className="text-xs md:text-sm bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-medium flex items-center gap-1">
-                  <StarIcon className="w-3 h-3 fill-yellow-800" />
-                  Featured
-                </span>
-              )}
-
-              {product.is_ai_recommended && (
-                <span className="text-xs md:text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-medium flex items-center gap-1">
-                  <SparklesIcon className="w-3 h-3" />
-                  AI Recommended
-                </span>
-              )}
-            </div>
-
-            {/* Title */}
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-gray-900 leading-tight">
+            <h1 className="font-serif text-2xl md:text-3xl font-bold text-ink-800 leading-tight mb-4">
               {product.name}
             </h1>
 
-            {/* Rating */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-0.5">
-                {[...Array(5)].map((_, i) => (
-                  <StarIcon
-                    key={i}
-                    className={`w-4 h-4 md:w-5 md:h-5 ${
-                      i < Math.floor(product.average_rating || 4.5)
-                        ? 'text-yellow-400 fill-yellow-400'
-                        : 'text-gray-300'
-                    }`}
-                  />
-                ))}
+            {product.average_rating !== undefined && (
+              <div className="flex items-center gap-2 mb-5">
+                <div className="flex items-center gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <StarIcon
+                      key={i}
+                      className={`w-3.5 h-3.5 ${
+                        i < Math.floor(product.average_rating || 4.5)
+                          ? 'text-ink-800 fill-ink-800'
+                          : 'text-ink-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-ink-500">
+                  {product.average_rating?.toFixed(1) || '4.5'}
+                  {product.num_reviews > 0 && ` · ${product.num_reviews} reviews`}
+                </span>
               </div>
-              <span className="text-sm font-semibold text-gray-900">
-                {(product.average_rating || 4.5).toFixed(1)}
-              </span>
-              <span className="text-xs md:text-sm text-gray-400">
-                ({product.num_reviews || 0}{' '}
-                {product.num_reviews === 1 ? 'review' : 'reviews'})
-              </span>
-            </div>
+            )}
 
-            {/* Price */}
-            <div className="bg-gray-50 rounded-2xl p-4 md:p-5 border border-gray-100">
+            <div className="flex items-baseline gap-3 mb-6 pb-6 border-b border-line">
               {product.discount_price ? (
                 <>
-                  <div className="flex items-baseline gap-3 flex-wrap">
-                    <span className="text-3xl md:text-4xl font-bold text-amber-600">
-                      ₹{Number(product.discount_price).toFixed(2)}
-                    </span>
-                    <span className="text-lg md:text-xl text-gray-400 line-through">
-                      ₹{Number(product.price).toFixed(2)}
-                    </span>
-                    <span className="text-xs md:text-sm text-green-700 font-semibold bg-green-100 px-2.5 py-1 rounded-full">
-                      Save ₹
-                      {Number(product.price - product.discount_price).toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    Inclusive of all taxes
-                  </p>
+                  <span className="font-serif text-2xl md:text-3xl font-bold text-burgundy-500">
+                    ₹{Number(product.discount_price).toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-base text-ink-400 line-through">
+                    ₹{Number(product.price).toLocaleString('en-IN')}
+                  </span>
                 </>
               ) : (
-                <>
-                  <span className="text-3xl md:text-4xl font-bold text-amber-600">
-                    ₹{Number(product.price).toFixed(2)}
-                  </span>
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    Inclusive of all taxes
-                  </p>
-                </>
+                <span className="font-serif text-2xl md:text-3xl font-bold text-ink-800">
+                  ₹{Number(product.price).toLocaleString('en-IN')}
+                </span>
               )}
+              <span className="text-[11px] text-ink-500 ml-auto">
+                Incl. of all taxes
+              </span>
             </div>
 
-            {/* Stock Status */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-6">
               {product.stock > 0 ? (
                 <>
-                  <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
-                  <span className="text-sm text-green-700 font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+                  <span className="text-xs uppercase tracking-wider font-medium text-ink-700">
                     In Stock
                   </span>
                   {product.stock <= 5 && (
-                    <span className="text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full font-medium">
-                      Only {product.stock} left!
+                    <span className="text-[11px] text-burgundy-500 ml-2">
+                      · Only {product.stock} left
                     </span>
                   )}
                 </>
               ) : (
                 <>
-                  <span className="w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-                  <span className="text-sm text-red-600 font-semibold">
-                    Out of Stock
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span className="text-xs uppercase tracking-wider font-medium text-ink-500">
+                    Sold Out
                   </span>
                 </>
               )}
             </div>
 
-            {/* ==========================================
-                FORMATTED DESCRIPTION
-            ========================================== */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-2 uppercase tracking-wider">
-                Product Description
-              </h3>
-              <div className="text-sm md:text-base text-gray-600 leading-relaxed space-y-1">
-                {renderedDescription}
-              </div>
-            </div>
-
-            {/* ==========================================
-                SPECIFICATIONS
-            ========================================== */}
-            <div className="bg-gray-50 rounded-2xl p-4 md:p-5 border border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wider">
-                Specifications
-              </h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                {product.material && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Material</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {product.material}
-                    </p>
-                  </div>
-                )}
-                {product.gemstone && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Gemstone</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {product.gemstone}
-                    </p>
-                  </div>
-                )}
-                {product.weight && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Weight</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {product.weight} g
-                    </p>
-                  </div>
-                )}
-                {product.category_name && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-0.5">Category</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {product.category_name}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {product.tags && product.tags.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 mb-2">Tags</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {product.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="text-xs bg-white border border-gray-200 text-gray-600 px-2.5 py-1 rounded-full"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ==========================================
-                QUANTITY + ADD TO CART
-            ========================================== */}
-            {product.stock > 0 && (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-semibold text-gray-900 mb-2 block">
-                    Quantity
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center border-2 border-gray-200 rounded-full overflow-hidden bg-white">
+            {/* DESKTOP CTA */}
+            <div className="hidden lg:block">
+              {!isOutOfStock && (
+                <>
+                  <div className="flex items-center justify-between mb-5">
+                    <span className="text-[11px] uppercase tracking-kicker font-semibold text-ink-800">
+                      Quantity
+                    </span>
+                    <div className="flex items-center border border-line rounded">
                       <button
                         onClick={() => handleQuantityChange(quantity - 1)}
                         disabled={quantity <= 1}
-                        className="px-3 md:px-4 py-2.5 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        aria-label="Decrease quantity"
+                        className="p-2.5 hover:bg-cream-200 transition-colors disabled:opacity-30"
+                        aria-label="Decrease"
                       >
-                        <MinusIcon className="w-4 h-4" />
+                        <MinusIcon className="w-3.5 h-3.5" />
                       </button>
-                      <span className="w-12 md:w-14 text-center font-bold text-base">
+                      <span className="w-10 text-center text-sm font-medium tabular-nums">
                         {quantity}
                       </span>
                       <button
                         onClick={() => handleQuantityChange(quantity + 1)}
                         disabled={quantity >= product.stock}
-                        className="px-3 md:px-4 py-2.5 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        aria-label="Increase quantity"
+                        className="p-2.5 hover:bg-cream-200 transition-colors disabled:opacity-30"
+                        aria-label="Increase"
                       >
-                        <PlusIcon className="w-4 h-4" />
+                        <PlusIcon className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <span className="text-sm text-gray-500">
-                      Max:{' '}
-                      <strong className="text-gray-900">{product.stock}</strong>
-                    </span>
                   </div>
-                </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={handleAddToCart}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white border-2 border-amber-500 text-amber-600 rounded-full font-semibold text-sm hover:bg-amber-50 transition-all shadow-sm"
-                  >
-                    <ShoppingBagIcon className="w-5 h-5" />
-                    Add to Cart
-                  </button>
+                  <div className="flex items-center gap-2 mb-3">
+                    <button
+                      onClick={handleAddToCart}
+                      className="btn-solid flex-1 py-4"
+                    >
+                      <ShoppingBagIcon className="w-4 h-4" />
+                      Add to Cart
+                    </button>
+                    <button
+                      onClick={handleWishlist}
+                      disabled={wishlistLoading}
+                      className="p-4 border border-line rounded hover:border-ink-800 transition-colors disabled:opacity-50"
+                      aria-label="Wishlist"
+                    >
+                      {isWishlist ? (
+                        <HeartSolidIcon className="w-5 h-5 text-burgundy-500" />
+                      ) : (
+                        <HeartIcon className="w-5 h-5 text-ink-800" />
+                      )}
+                    </button>
+                  </div>
+
                   <button
                     onClick={handleBuyNow}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full font-semibold text-sm hover:from-amber-600 hover:to-yellow-600 transition-all shadow-md hover:shadow-lg"
+                    className="w-full py-4 border border-ink-800 rounded text-[11px] uppercase tracking-wider font-semibold text-ink-800 hover:bg-ink-800 hover:text-cream-100 transition-colors"
                   >
-                    Buy Now
-                    <ArrowRightIcon className="w-4 h-4" />
+                    Buy It Now
                   </button>
-                </div>
-              </div>
-            )}
+                </>
+              )}
+            </div>
 
-            {product.stock === 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
-                <p className="text-sm text-red-700 font-medium">
-                  This product is currently out of stock.
-                </p>
-                <p className="text-xs text-red-500 mt-1">
-                  Please check back later or explore similar items below.
+            {/* TRUST STRIP */}
+            <div className="grid grid-cols-3 gap-3 py-6 border-y border-line my-6">
+              <div className="flex flex-col items-start gap-2">
+                <TruckIcon className="w-4 h-4 text-ink-800" />
+                <p className="text-[11px] text-ink-600 leading-tight">
+                  Free shipping above ₹1000
                 </p>
               </div>
-            )}
+              <div className="flex flex-col items-start gap-2">
+                <ShieldCheckIcon className="w-4 h-4 text-ink-800" />
+                <p className="text-[11px] text-ink-600 leading-tight">
+                  Secure UPI payment
+                </p>
+              </div>
+              <div className="flex flex-col items-start gap-2">
+                <HeartIcon className="w-4 h-4 text-ink-800" />
+                <p className="text-[11px] text-ink-600 leading-tight">
+                  Handpicked with care
+                </p>
+              </div>
+            </div>
 
-            {/* ==========================================
-                SHARE + WISHLIST
-            ========================================== */}
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={handleWishlist}
-                disabled={wishlistLoading}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 rounded-full hover:border-amber-300 hover:bg-amber-50 transition-all text-sm font-medium text-gray-700 disabled:opacity-50"
+            {/* ACCORDIONS */}
+            <div className="divide-y divide-line border-b border-line">
+              <Accordion
+                title="Description"
+                open={openSection === 'description'}
+                onToggle={() =>
+                  setOpenSection((s) => (s === 'description' ? null : 'description'))
+                }
               >
-                {isWishlist ? (
-                  <HeartSolidIcon className="w-4 h-4 text-red-500" />
-                ) : (
-                  <HeartIcon className="w-4 h-4" />
-                )}
-                {isWishlist ? 'Wishlisted' : 'Add to Wishlist'}
-              </button>
+                <div className="text-sm text-ink-600 leading-relaxed space-y-1">
+                  {renderedDescription}
+                </div>
+              </Accordion>
 
-              <div className="relative">
-                <button
-                  onClick={() => setShowShareMenu(!showShareMenu)}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-3 border-2 border-gray-200 rounded-full hover:border-amber-300 hover:bg-amber-50 transition-all text-sm font-medium text-gray-700"
+              {specs.length > 0 && (
+                <Accordion
+                  title="Details"
+                  open={openSection === 'details'}
+                  onToggle={() =>
+                    setOpenSection((s) => (s === 'details' ? null : 'details'))
+                  }
                 >
-                  <ShareIcon className="w-4 h-4" />
-                  Share
-                </button>
-
-                <AnimatePresence>
-                  {showShareMenu && (
-                    <>
+                  <dl className="space-y-2.5">
+                    {specs.map((s) => (
                       <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setShowShareMenu(false)}
-                      />
-                      <motion.div
-                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                        className="absolute right-0 bottom-full mb-2 w-44 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-20"
+                        key={s.label}
+                        className="flex items-start justify-between gap-4 text-sm"
                       >
-                        <button
-                          onClick={() => handleShare('copy')}
-                          className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-amber-50 transition-colors"
-                        >
-                          📋 Copy Link
-                        </button>
-                        <button
-                          onClick={() => handleShare('whatsapp')}
-                          className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-amber-50 transition-colors"
-                        >
-                          💬 WhatsApp
-                        </button>
-                        <button
-                          onClick={() => handleShare('twitter')}
-                          className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-amber-50 transition-colors"
-                        >
-                          🐦 Twitter
-                        </button>
-                        <button
-                          onClick={() => handleShare('facebook')}
-                          className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-amber-50 transition-colors"
-                        >
-                          📘 Facebook
-                        </button>
-                      </motion.div>
-                    </>
+                        <dt className="text-ink-500">{s.label}</dt>
+                        <dd className="text-ink-800 font-medium text-right">
+                          {s.value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+
+                  {product.tags?.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-line">
+                      <p className="text-[10px] uppercase tracking-kicker font-semibold text-ink-500 mb-2">
+                        Tags
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {product.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-[10px] bg-cream-100 border border-line text-ink-600 px-2 py-0.5 rounded"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </AnimatePresence>
-              </div>
-            </div>
+                </Accordion>
+              )}
 
-            {/* ==========================================
-                TRUST FEATURES
-            ========================================== */}
-            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-200">
-              <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-700">
-                <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
-                  <TruckIcon className="w-4 h-4 text-amber-600" />
+              <Accordion
+                title="Shipping & Returns"
+                open={openSection === 'shipping'}
+                onToggle={() =>
+                  setOpenSection((s) => (s === 'shipping' ? null : 'shipping'))
+                }
+              >
+                <div className="text-sm text-ink-600 space-y-3 leading-relaxed">
+                  <p>
+                    Free shipping on orders above ₹1000. Standard delivery
+                    within 3–5 business days.
+                  </p>
+                  <p>
+                    Easy returns within 7 days of delivery. Product must be in
+                    original condition.
+                  </p>
                 </div>
-                <span>Free Shipping</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-700">
-                <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
-                  <ShieldCheckIcon className="w-4 h-4 text-amber-600" />
+              </Accordion>
+
+              <div className="py-4 flex items-center justify-between">
+                <span className="text-[11px] uppercase tracking-kicker font-semibold text-ink-800">
+                  Share
+                </span>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowShareMenu(!showShareMenu)}
+                    className="p-2 hover:bg-cream-200 rounded transition-colors"
+                    aria-label="Share"
+                  >
+                    <ShareIcon className="w-4 h-4 text-ink-800" />
+                  </button>
+
+                  <AnimatePresence>
+                    {showShareMenu && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setShowShareMenu(false)}
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 bottom-full mb-2 w-40 bg-white rounded-lg border border-line shadow-lg overflow-hidden z-20"
+                        >
+                          {[
+                            { key: 'copy', label: 'Copy Link' },
+                            { key: 'whatsapp', label: 'WhatsApp' },
+                            { key: 'twitter', label: 'Twitter' },
+                            { key: 'facebook', label: 'Facebook' },
+                          ].map((opt) => (
+                            <button
+                              key={opt.key}
+                              onClick={() => handleShare(opt.key)}
+                              className="w-full text-left px-4 py-2.5 text-sm text-ink-700 hover:bg-cream-100 transition-colors"
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <span>Secure Payment</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-700">
-                <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
-                  <ArrowLeftIcon className="w-4 h-4 text-amber-600" />
-                </div>
-                <span>30-Day Returns</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-xs md:text-sm text-gray-700">
-                <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
-                  <CheckIcon className="w-4 h-4 text-amber-600" />
-                </div>
-                <span>Certified</span>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* ==========================================
-          RELATED PRODUCTS
-      ========================================== */}
-      <section className="py-10 md:py-14 bg-white border-t border-gray-100">
-        <div className="container-custom">
-          <div className="flex items-end justify-between mb-6 md:mb-8">
-            <div>
-              <p className="text-amber-600 text-xs md:text-sm font-semibold uppercase tracking-wider mb-1">
-                You May Also Like
-              </p>
-              <h2 className="text-2xl md:text-3xl font-serif font-bold text-gray-900">
-                Similar Pieces
-              </h2>
-            </div>
-            {product.category && (
-              <Link
-                to={`/categories/${product.category}`}
-                className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors"
-              >
-                View All
-                <ArrowRightIcon className="w-4 h-4" />
-              </Link>
-            )}
-          </div>
-
-          {relatedLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="bg-gray-100 rounded-2xl aspect-[3/4] animate-pulse"
-                />
-              ))}
-            </div>
-          ) : relatedProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-              {relatedProducts.map((p, index) => (
-                <motion.div
-                  key={p.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.08 }}
-                  viewport={{ once: true }}
-                >
-                  <ProductCard product={p} />
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-10 bg-gray-50 rounded-2xl">
-              <ShoppingBagIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm mb-4">
-                No similar products found in this category
-              </p>
-              <Link
-                to="/products"
-                className="inline-flex items-center gap-1 px-5 py-2.5 bg-gray-900 text-white rounded-full hover:bg-amber-600 transition-colors text-sm font-medium"
-              >
-                Browse All Products
-                <ArrowRightIcon className="w-4 h-4" />
-              </Link>
-            </div>
-          )}
         </div>
       </section>
+
+      {/* RELATED */}
+      {relatedProducts.length > 0 && (
+        <section className="border-t border-line bg-cream-100 py-12 md:py-16">
+          <div className="container-editorial">
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <p className="kicker mb-3">You May Also Like</p>
+                <h2 className="section-heading">
+                  Similar <span className="italic">pieces.</span>
+                </h2>
+              </div>
+              <Link
+                to="/products"
+                className="hidden md:inline-block text-xs uppercase tracking-wider font-medium text-ink-700 hover:text-burgundy-500 transition-colors"
+              >
+                View all →
+              </Link>
+            </div>
+
+            {relatedLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="aspect-[4/5] bg-cream-200 rounded-lg animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+                {relatedProducts.map((p, i) => (
+                  <motion.div
+                    key={p.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.06, 0.3) }}
+                    viewport={{ once: true }}
+                  >
+                    <ProductCard product={p} />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* MOBILE STICKY BAR */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-line">
+        <div className="px-4 py-3 flex items-center gap-3">
+          <button
+            onClick={handleWishlist}
+            disabled={wishlistLoading}
+            className="p-2.5 border border-line rounded disabled:opacity-50"
+            aria-label="Wishlist"
+          >
+            {isWishlist ? (
+              <HeartSolidIcon className="w-5 h-5 text-burgundy-500" />
+            ) : (
+              <HeartIcon className="w-5 h-5 text-ink-800" />
+            )}
+          </button>
+
+          {!isOutOfStock && (
+            <div className="flex items-center border border-line rounded">
+              <button
+                onClick={() => handleQuantityChange(quantity - 1)}
+                disabled={quantity <= 1}
+                className="p-2.5 disabled:opacity-30"
+                aria-label="Decrease"
+              >
+                <MinusIcon className="w-3.5 h-3.5" />
+              </button>
+              <span className="px-2.5 text-sm font-medium tabular-nums">
+                {quantity}
+              </span>
+              <button
+                onClick={() => handleQuantityChange(quantity + 1)}
+                disabled={quantity >= product.stock}
+                className="p-2.5 disabled:opacity-30"
+                aria-label="Increase"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={handleAddToCart}
+            disabled={isOutOfStock}
+            className="flex-1 bg-ink-800 text-cream-100 py-3 rounded text-[11px] uppercase tracking-wider font-semibold hover:bg-burgundy-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isOutOfStock ? 'Sold Out' : 'Add to Cart'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
 
 // ==========================================
+// ACCORDION
+// ==========================================
+const Accordion = ({ title, open, onToggle, children }) => (
+  <div>
+    <button
+      onClick={onToggle}
+      className="w-full py-4 flex items-center justify-between text-left group"
+    >
+      <span className="text-[11px] uppercase tracking-kicker font-semibold text-ink-800 group-hover:text-burgundy-500 transition-colors">
+        {title}
+      </span>
+      <ChevronDownIcon
+        className={`w-4 h-4 text-ink-500 transition-transform duration-200 ${
+          open ? 'rotate-180' : ''
+        }`}
+      />
+    </button>
+    <AnimatePresence initial={false}>
+      {open && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="overflow-hidden"
+        >
+          <div className="pb-5">{children}</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+);
+
+// ==========================================
 // DESCRIPTION FORMATTER
 // ==========================================
 function renderFormattedDescription(text) {
-  if (!text)
-    return (
-      <p className="text-gray-500 italic">No description available</p>
-    );
+  if (!text) {
+    return <p className="text-ink-500 italic">No description available</p>;
+  }
 
   const lines = text.split('\n');
   const elements = [];
@@ -882,24 +820,22 @@ function renderFormattedDescription(text) {
       return;
     }
 
-    // Bullet points
     if (trimmed.startsWith('• ') || trimmed.startsWith('- ')) {
       elements.push(
-        <div key={lineIdx} className="flex items-start gap-2 ml-2">
-          <span className="text-amber-500 mt-0.5 flex-shrink-0">•</span>
+        <div key={lineIdx} className="flex items-start gap-2 ml-1">
+          <span className="text-burgundy-500 mt-1.5 flex-shrink-0">•</span>
           <span>{applyInlineFormatting(trimmed.substring(2))}</span>
         </div>
       );
       return;
     }
 
-    // Numbered lists
     if (/^\d+\.\s/.test(trimmed)) {
       const match = trimmed.match(/^(\d+)\.\s(.*)$/);
       if (match) {
         elements.push(
-          <div key={lineIdx} className="flex items-start gap-2 ml-2">
-            <span className="text-amber-500 font-medium min-w-[1.2rem]">
+          <div key={lineIdx} className="flex items-start gap-2 ml-1">
+            <span className="text-burgundy-500 font-medium min-w-[1.2rem]">
               {match[1]}.
             </span>
             <span>{applyInlineFormatting(match[2])}</span>
@@ -909,7 +845,6 @@ function renderFormattedDescription(text) {
       }
     }
 
-    // Regular paragraph
     elements.push(
       <p key={lineIdx} className="leading-relaxed">
         {applyInlineFormatting(trimmed)}
@@ -936,13 +871,13 @@ function applyInlineFormatting(text) {
 
     if (token.startsWith('**') && token.endsWith('**')) {
       parts.push(
-        <strong key={`b-${keyIdx++}`} className="font-bold text-gray-900">
+        <strong key={`b-${keyIdx++}`} className="font-semibold text-ink-800">
           {token.slice(2, -2)}
         </strong>
       );
     } else if (token.startsWith('*') && token.endsWith('*')) {
       parts.push(
-        <em key={`i-${keyIdx++}`} className="italic text-gray-700">
+        <em key={`i-${keyIdx++}`} className="italic text-ink-700">
           {token.slice(1, -1)}
         </em>
       );

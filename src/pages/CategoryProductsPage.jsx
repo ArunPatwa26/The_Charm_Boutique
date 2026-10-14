@@ -5,13 +5,13 @@ import {
   ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   ShoppingBagIcon,
-  ArrowPathIcon,
-  FunnelIcon,
   Squares2X2Icon,
   ListBulletIcon,
-  ChevronDownIcon,
+  ArrowUpRightIcon,
 } from '@heroicons/react/24/outline';
+
 import { getCategoryById } from '../services/categoryService';
 import { getProducts } from '../services/productService';
 import ProductCard from '../components/products/ProductCard';
@@ -19,14 +19,14 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=1600&h=600&fit=crop';
+  'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=1200&h=600&fit=crop';
 
 const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest First' },
-  { value: 'price_asc', label: 'Price: Low to High' },
-  { value: 'price_desc', label: 'Price: High to Low' },
-  { value: 'rating', label: 'Highest Rated' },
-  { value: 'name_asc', label: 'Name: A to Z' },
+  { value: 'newest', label: 'Newest' },
+  { value: 'price_asc', label: 'Price · Low to High' },
+  { value: 'price_desc', label: 'Price · High to Low' },
+  { value: 'rating', label: 'Top Rated' },
+  { value: 'name_asc', label: 'Alphabetical · A–Z' },
 ];
 
 const CategoryProductsPage = () => {
@@ -45,7 +45,7 @@ const CategoryProductsPage = () => {
   });
 
   // ==========================================
-  // FETCH DATA
+  // FETCH
   // ==========================================
   const fetchCategoryAndProducts = useCallback(async () => {
     setLoading(true);
@@ -83,9 +83,7 @@ const CategoryProductsPage = () => {
     fetchCategoryAndProducts();
   }, [fetchCategoryAndProducts]);
 
-  // ==========================================
-  // CLOSE SORT DROPDOWN ON OUTSIDE CLICK
-  // ==========================================
+  // Close sort dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (sortOpen && !e.target.closest('.sort-dropdown')) {
@@ -107,13 +105,8 @@ const CategoryProductsPage = () => {
     setSortOpen(false);
   };
 
-  const clearFilters = () => {
-    setSortBy('newest');
-    setPagination({ ...pagination, page: 1 });
-  };
-
   const currentSortLabel =
-    SORT_OPTIONS.find((o) => o.value === sortBy)?.label || 'Newest First';
+    SORT_OPTIONS.find((o) => o.value === sortBy)?.label || 'Newest';
 
   // ==========================================
   // PAGINATION NUMBERS
@@ -136,36 +129,31 @@ const CategoryProductsPage = () => {
   };
 
   // ==========================================
-  // LOADING (Initial)
+  // LOADING (initial)
   // ==========================================
   if (loading && !category) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-cream-100">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   // ==========================================
-  // CATEGORY NOT FOUND
+  // NOT FOUND
   // ==========================================
   if (!category) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4">
-        <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-5">
-          <ShoppingBagIcon className="w-10 h-10 text-gray-300" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-3">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-cream-100 px-4">
+        <ShoppingBagIcon className="w-14 h-14 text-ink-300 mb-5" />
+        <h2 className="font-serif text-2xl font-bold text-ink-800 mb-2">
           Category not found
         </h2>
-        <p className="text-gray-500 mb-6 text-center max-w-sm">
+        <p className="text-sm text-ink-500 mb-6 text-center max-w-sm">
           The category you're looking for doesn't exist or has been removed.
         </p>
-        <Link
-          to="/categories"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full hover:from-amber-600 hover:to-yellow-600 transition-all font-medium shadow-md"
-        >
-          <ArrowLeftIcon className="w-4 h-4" />
+        <Link to="/categories" className="btn-outline text-xs">
+          <ArrowLeftIcon className="w-3.5 h-3.5" />
           Back to Categories
         </Link>
       </div>
@@ -173,86 +161,85 @@ const CategoryProductsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-cream-100">
       {/* ==========================================
-          HERO BANNER
+          BREADCRUMB + EDITORIAL HEADER
       ========================================== */}
-      <section className="relative pt-16 sm:pt-20 md:pt-24 pb-12 md:pb-20 overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src={category.image || FALLBACK_IMAGE}
-            alt={category.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.target.src = FALLBACK_IMAGE;
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/65 to-black/40" />
-        </div>
-
-        <div className="container-custom relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
+      <section className="border-b border-line bg-cream-100">
+        <div className="container-editorial py-6 md:py-10">
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-2 text-xs text-ink-500 mb-5">
+            <Link to="/" className="hover:text-burgundy-500 transition-colors">
+              Home
+            </Link>
+            <span className="text-ink-300">/</span>
             <Link
               to="/categories"
-              className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-3 md:mb-5 transition-colors text-xs md:text-sm"
+              className="hover:text-burgundy-500 transition-colors"
             >
-              <ArrowLeftIcon className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              All Categories
+              Categories
             </Link>
-
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white mb-3 md:mb-4 leading-tight">
+            <span className="text-ink-300">/</span>
+            <span className="text-ink-700 truncate max-w-[160px]">
               {category.name}
-            </h1>
+            </span>
+          </nav>
 
-            <p className="text-sm md:text-lg text-white/80 max-w-2xl leading-relaxed">
-              {category.description ||
-                `Explore our exclusive collection of ${category.name.toLowerCase()}`}
-            </p>
-
-            <div className="flex items-center gap-2 mt-4 md:mt-6">
-              <div className="px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full flex items-center gap-2 border border-white/20">
-                <ShoppingBagIcon className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
-                <span className="text-white text-xs md:text-sm font-medium">
-                  {pagination.total}{' '}
-                  {pagination.total === 1 ? 'item' : 'items'} available
-                </span>
-              </div>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+              <p className="kicker mb-3">Collection</p>
+              <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold text-ink-800 leading-tight">
+                {category.name}
+              </h1>
+              {category.description && (
+                <p className="mt-3 text-sm md:text-base text-ink-600 max-w-xl leading-relaxed">
+                  {category.description}
+                </p>
+              )}
             </div>
-          </motion.div>
+
+            {/* Result count */}
+            <div className="flex items-center gap-2 text-xs text-ink-500 whitespace-nowrap">
+              <ShoppingBagIcon className="w-4 h-4" />
+              <span>
+                <span className="font-medium text-ink-800">
+                  {pagination.total}
+                </span>{' '}
+                {pagination.total === 1 ? 'piece' : 'pieces'}
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ==========================================
           STICKY TOOLBAR
       ========================================== */}
-      <section className="sticky top-16 md:top-[72px] z-30 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm">
-        <div className="container-custom py-3">
-          <div className="flex items-center justify-between gap-3">
-            {/* Left: Result count */}
-            <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600 min-w-0">
-              <FunnelIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <span className="truncate">
-                <strong className="text-gray-900">{products.length}</strong>
-                <span className="text-gray-400 mx-1">/</span>
-                <strong className="text-gray-900">{pagination.total}</strong>
-                <span className="hidden sm:inline"> products</span>
+      <div className="sticky top-14 md:top-16 z-30 border-b border-line bg-cream-100">
+        <div className="container-editorial">
+          <div className="py-3 flex items-center justify-between gap-3">
+            {/* Count */}
+            <p className="text-xs text-ink-500">
+              Showing{' '}
+              <span className="text-ink-800 font-medium">
+                {products.length}
+              </span>{' '}
+              of{' '}
+              <span className="text-ink-800 font-medium">
+                {pagination.total}
               </span>
-            </div>
+            </p>
 
-            {/* Right: Sort + view toggle */}
+            {/* Sort + view toggle */}
             <div className="flex items-center gap-2">
-              {/* Custom Sort Dropdown */}
+              {/* Sort dropdown */}
               <div className="relative sort-dropdown">
                 <button
                   onClick={() => setSortOpen(!sortOpen)}
-                  className="inline-flex items-center gap-2 px-3 md:px-4 py-2 bg-white border border-gray-200 rounded-full text-xs md:text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-line rounded text-[11px] uppercase tracking-wider font-medium text-ink-800 hover:border-ink-800 transition-colors"
                 >
                   <span className="hidden sm:inline">Sort:</span>
-                  <span className="text-gray-900 truncate max-w-[100px] sm:max-w-none">
+                  <span className="truncate max-w-[100px] sm:max-w-none">
                     {currentSortLabel}
                   </span>
                   <ChevronDownIcon
@@ -265,11 +252,11 @@ const CategoryProductsPage = () => {
                 <AnimatePresence>
                   {sortOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: -8 }}
+                      initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
+                      exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                      className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg border border-line shadow-lg overflow-hidden z-50"
                     >
                       {SORT_OPTIONS.map((opt) => (
                         <button
@@ -277,8 +264,8 @@ const CategoryProductsPage = () => {
                           onClick={() => handleSortChange(opt.value)}
                           className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
                             sortBy === opt.value
-                              ? 'bg-amber-50 text-amber-700 font-semibold'
-                              : 'text-gray-700 hover:bg-gray-50'
+                              ? 'bg-cream-100 text-burgundy-500 font-medium'
+                              : 'text-ink-700 hover:bg-cream-100'
                           }`}
                         >
                           {opt.label}
@@ -289,299 +276,222 @@ const CategoryProductsPage = () => {
                 </AnimatePresence>
               </div>
 
-              {/* View toggle (desktop only) */}
-              <div className="hidden md:flex items-center bg-gray-100 rounded-full p-1">
+              {/* View toggle */}
+              <div className="hidden md:flex items-center border border-line rounded overflow-hidden bg-white">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-full transition-all ${
+                  className={`p-2 transition-colors ${
                     viewMode === 'grid'
-                      ? 'bg-white shadow-sm text-amber-600'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-ink-800 text-cream-100'
+                      : 'text-ink-500 hover:bg-cream-100'
                   }`}
-                  title="Grid view"
+                  aria-label="Grid view"
                 >
                   <Squares2X2Icon className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-full transition-all ${
+                  className={`p-2 transition-colors ${
                     viewMode === 'list'
-                      ? 'bg-white shadow-sm text-amber-600'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-ink-800 text-cream-100'
+                      : 'text-ink-500 hover:bg-cream-100'
                   }`}
-                  title="List view"
+                  aria-label="List view"
                 >
                   <ListBulletIcon className="w-4 h-4" />
                 </button>
               </div>
-
-              {/* Reset */}
-              {sortBy !== 'newest' && (
-                <button
-                  onClick={clearFilters}
-                  className="hidden sm:flex items-center gap-1 px-3 py-2 text-xs md:text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-full transition-colors"
-                >
-                  <ArrowPathIcon className="w-3.5 h-3.5" />
-                  <span className="hidden lg:inline">Reset</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
       {/* ==========================================
           PRODUCTS
       ========================================== */}
-      <section className="py-6 md:py-10">
-        <div className="container-custom">
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <LoadingSpinner size="lg" />
+      <section className="container-editorial py-8 md:py-10">
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <LoadingSpinner size="lg" />
+          </div>
+        ) : products.length === 0 ? (
+          /* Empty state */
+          <div className="text-center py-20 max-w-md mx-auto">
+            <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center rounded-full bg-cream-200">
+              <ShoppingBagIcon className="w-7 h-7 text-ink-400" />
             </div>
-          ) : products.length === 0 ? (
-            /* Empty state */
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-16 md:py-20 bg-white rounded-3xl border border-gray-100 max-w-2xl mx-auto px-6"
-            >
-              <div className="w-20 h-20 md:w-24 md:h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5">
-                <ShoppingBagIcon className="w-10 h-10 md:w-12 md:h-12 text-gray-300" />
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
-                No products in this category yet
-              </h3>
-              <p className="text-sm md:text-base text-gray-500 mb-6">
-                Check back soon for new arrivals or explore our other
-                collections.
-              </p>
-              <div className="flex flex-wrap gap-3 justify-center">
-                <Link
-                  to="/products"
-                  className="inline-flex items-center gap-2 px-5 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full hover:from-amber-600 hover:to-yellow-600 transition-all font-medium text-sm shadow-md"
-                >
-                  <ShoppingBagIcon className="w-4 h-4" />
-                  Browse All Products
-                </Link>
-                <Link
-                  to="/categories"
-                  className="inline-flex items-center gap-2 px-5 md:px-6 py-2.5 md:py-3 border-2 border-gray-200 text-gray-900 rounded-full hover:border-amber-400 hover:text-amber-700 transition-colors font-medium text-sm"
-                >
-                  View Categories
-                </Link>
-              </div>
-            </motion.div>
-          ) : (
-            <>
-              {/* Grid / List */}
-              <AnimatePresence mode="wait">
-                {viewMode === 'grid' ? (
-                  <motion.div
-                    key="grid"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5 lg:gap-6"
+            <h2 className="font-serif text-2xl font-bold text-ink-800 mb-3">
+              Nothing here yet.
+            </h2>
+            <p className="text-sm text-ink-500 mb-8">
+              Check back soon — new pieces are added to this collection
+              regularly.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Link to="/products" className="btn-solid text-xs">
+                Shop All Products
+              </Link>
+              <Link to="/categories" className="btn-outline text-xs">
+                View Categories
+              </Link>
+            </div>
+          </div>
+        ) : viewMode === 'grid' ? (
+          /* Grid view */
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+            {products.map((product, index) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(index * 0.03, 0.3) }}
+              >
+                <ProductCard product={product} />
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          /* List view (desktop) */
+          <div className="space-y-4">
+            {products.map((product) => (
+              <ListRow key={product.id} product={product} />
+            ))}
+          </div>
+        )}
+
+        {/* ==========================================
+            PAGINATION
+        ========================================== */}
+        {pagination.pages > 1 && (
+          <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-line">
+            <p className="text-xs text-ink-500 order-2 sm:order-1">
+              Page {pagination.page} of {pagination.pages}
+            </p>
+
+            <nav className="flex items-center gap-1 order-1 sm:order-2">
+              <button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="px-3 py-1.5 text-xs uppercase tracking-wider font-medium border border-line rounded hover:border-ink-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Prev
+              </button>
+
+              {getPageNumbers().map((pageNum, i) =>
+                pageNum === '...' ? (
+                  <span
+                    key={`dots-${i}`}
+                    className="px-2 text-ink-400 text-xs"
                   >
-                    {products.map((product, index) => (
-                      <motion.div
-                        key={product.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: Math.min(index * 0.04, 0.3) }}
-                      >
-                        <ProductCard product={product} />
-                      </motion.div>
-                    ))}
-                  </motion.div>
+                    …
+                  </span>
                 ) : (
-                  /* List view (desktop) */
-                  <motion.div
-                    key="list"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="space-y-3"
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`min-w-[34px] px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                      pagination.page === pageNum
+                        ? 'bg-ink-800 text-cream-100'
+                        : 'border border-line hover:border-ink-800 text-ink-700'
+                    }`}
                   >
-                    {products.map((product, index) => (
-                      <motion.div
-                        key={product.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: Math.min(index * 0.04, 0.3) }}
-                      >
-                        <Link
-                          to={`/products/${product.id}`}
-                          className="flex gap-4 md:gap-5 p-3 md:p-4 bg-white border border-gray-100 rounded-2xl hover:shadow-lg hover:border-amber-200 transition-all group"
-                        >
-                          <div className="w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 flex-shrink-0 rounded-xl overflow-hidden bg-gray-50">
-                            <img
-                              src={
-                                product.main_image ||
-                                product.images?.[0] ||
-                                FALLBACK_IMAGE
-                              }
-                              alt={product.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                          </div>
-
-                          <div className="flex-1 min-w-0 flex flex-col">
-                            <p className="text-[10px] md:text-xs text-amber-600 font-semibold uppercase tracking-wide mb-1">
-                              {product.category_name || 'Jewellery'}
-                            </p>
-                            <h3 className="font-semibold text-sm md:text-base lg:text-lg text-gray-900 mb-1.5 line-clamp-2 group-hover:text-amber-600 transition-colors">
-                              {product.name}
-                            </h3>
-                            <p className="hidden sm:block text-xs md:text-sm text-gray-500 line-clamp-2 mb-3">
-                              {product.description}
-                            </p>
-
-                            <div className="mt-auto flex items-center justify-between flex-wrap gap-2">
-                              <div className="flex items-baseline gap-2">
-                                {product.discount_price ? (
-                                  <>
-                                    <span className="text-base md:text-xl font-bold text-amber-600">
-                                      ₹
-                                      {Number(product.discount_price).toFixed(
-                                        2
-                                      )}
-                                    </span>
-                                    <span className="text-xs md:text-sm text-gray-400 line-through">
-                                      ₹{Number(product.price).toFixed(2)}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-base md:text-xl font-bold text-amber-600">
-                                    ₹{Number(product.price).toFixed(2)}
-                                  </span>
-                                )}
-                              </div>
-
-                              <span className="hidden md:flex text-xs text-amber-600 font-medium group-hover:translate-x-1 transition-transform items-center gap-1">
-                                View Details
-                                <ChevronRightIcon className="w-3.5 h-3.5" />
-                              </span>
-                            </div>
-                          </div>
-                        </Link>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* ==========================================
-                  PAGINATION
-              ========================================== */}
-              {pagination.pages > 1 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-10 md:mt-14"
-                >
-                  <p className="text-xs md:text-sm text-gray-500 order-2 sm:order-1">
-                    Page{' '}
-                    <strong className="text-gray-900">
-                      {pagination.page}
-                    </strong>{' '}
-                    of{' '}
-                    <strong className="text-gray-900">
-                      {pagination.pages}
-                    </strong>
-                  </p>
-
-                  <div className="flex items-center gap-1.5 order-1 sm:order-2">
-                    <button
-                      onClick={() => handlePageChange(pagination.page - 1)}
-                      disabled={pagination.page === 1}
-                      className="w-9 h-9 md:w-10 md:h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-white hover:border-amber-400 hover:text-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                      aria-label="Previous page"
-                    >
-                      <ChevronLeftIcon className="w-4 h-4" />
-                    </button>
-
-                    {getPageNumbers().map((pageNum, idx) =>
-                      pageNum === '...' ? (
-                        <span
-                          key={`dots-${idx}`}
-                          className="px-1 md:px-2 text-gray-400 text-sm"
-                        >
-                          …
-                        </span>
-                      ) : (
-                        <button
-                          key={pageNum}
-                          onClick={() => handlePageChange(pageNum)}
-                          className={`w-9 h-9 md:w-10 md:h-10 rounded-full font-medium text-xs md:text-sm transition-all ${
-                            pagination.page === pageNum
-                              ? 'bg-gradient-to-br from-amber-500 to-yellow-500 text-white shadow-md'
-                              : 'border border-gray-200 hover:bg-white hover:border-amber-400 hover:text-amber-600'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      )
-                    )}
-
-                    <button
-                      onClick={() => handlePageChange(pagination.page + 1)}
-                      disabled={pagination.page === pagination.pages}
-                      className="w-9 h-9 md:w-10 md:h-10 rounded-full border border-gray-200 flex items-center justify-center hover:bg-white hover:border-amber-400 hover:text-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                      aria-label="Next page"
-                    >
-                      <ChevronRightIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                </motion.div>
+                    {pageNum}
+                  </button>
+                )
               )}
-            </>
-          )}
-        </div>
+
+              <button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.pages}
+                className="px-3 py-1.5 text-xs uppercase tracking-wider font-medium border border-line rounded hover:border-ink-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </nav>
+          </div>
+        )}
       </section>
 
       {/* ==========================================
-          CTA SECTION
+          BOTTOM CTA
       ========================================== */}
       {products.length > 0 && (
-        <section className="py-12 md:py-16 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl" />
-
-          <div className="container-custom relative z-10">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center max-w-2xl mx-auto"
-            >
-              <h2 className="text-2xl md:text-3xl font-serif font-bold mb-3">
-                Can't find what you're looking for?
-              </h2>
-              <p className="text-gray-300 mb-6 text-sm md:text-base">
-                Explore our other collections or let our AI recommend the
-                perfect piece for you.
-              </p>
-              <div className="flex flex-wrap gap-3 justify-center">
-                <Link
-                  to="/categories"
-                  className="inline-flex items-center gap-2 px-5 md:px-6 py-2.5 md:py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full hover:from-amber-600 hover:to-yellow-600 transition-all font-medium text-sm shadow-md"
-                >
-                  Browse All Categories
-                </Link>
-                <Link
-                  to="/products"
-                  className="inline-flex items-center gap-2 px-5 md:px-6 py-2.5 md:py-3 border-2 border-white/30 text-white rounded-full hover:border-amber-400 hover:bg-white/10 transition-colors font-medium text-sm"
-                >
-                  Shop All Products
-                </Link>
-              </div>
-            </motion.div>
+        <section className="border-t border-line bg-cream-100 py-12 md:py-16">
+          <div className="container-editorial text-center max-w-xl mx-auto">
+            <p className="kicker mb-4">Explore More</p>
+            <h2 className="font-serif text-2xl md:text-3xl font-bold text-ink-800 mb-3">
+              Looking for something <span className="italic">else?</span>
+            </h2>
+            <p className="text-sm text-ink-600 mb-8">
+              Browse our other collections or view all pieces in one place.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Link to="/categories" className="btn-solid text-xs">
+                All Categories
+              </Link>
+              <Link to="/products" className="btn-outline text-xs">
+                Shop All
+              </Link>
+            </div>
           </div>
         </section>
       )}
     </div>
+  );
+};
+
+// ==========================================
+// LIST ROW (desktop list view)
+// ==========================================
+const ListRow = ({ product }) => {
+  const discount = product.discount_price
+    ? Math.round(
+        ((product.price - product.discount_price) / product.price) * 100
+      )
+    : 0;
+
+  return (
+    <Link
+      to={`/products/${product.id}`}
+      className="group flex gap-5 p-4 bg-white border border-line rounded-lg hover:border-ink-800 transition-colors"
+    >
+      <div className="w-28 h-32 flex-shrink-0 rounded overflow-hidden bg-cream-200">
+        <img
+          src={product.main_image || product.images?.[0]}
+          alt={product.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        />
+      </div>
+      <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+        <div>
+          <h3 className="font-medium text-ink-800 mb-1 group-hover:text-burgundy-500 transition-colors">
+            {product.name}
+          </h3>
+          <p className="text-sm text-ink-500 line-clamp-2">
+            {product.description}
+          </p>
+        </div>
+        <div className="flex items-baseline gap-2">
+          {product.discount_price ? (
+            <>
+              <span className="text-base font-semibold text-burgundy-500">
+                ₹{Number(product.discount_price).toLocaleString('en-IN')}
+              </span>
+              <span className="text-sm text-ink-400 line-through">
+                ₹{Number(product.price).toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-burgundy-500 ml-auto">
+                {discount}% off
+              </span>
+            </>
+          ) : (
+            <span className="text-base font-semibold text-ink-800">
+              ₹{Number(product.price).toLocaleString('en-IN')}
+            </span>
+          )}
+        </div>
+      </div>
+    </Link>
   );
 };
 

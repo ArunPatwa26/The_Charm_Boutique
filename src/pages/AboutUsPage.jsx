@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  SparklesIcon,
   HeartIcon,
+  SparklesIcon,
   ShieldCheckIcon,
   StarIcon,
   ArrowRightIcon,
+  ArrowUpRightIcon,
 } from '@heroicons/react/24/outline';
 import { FaInstagram } from 'react-icons/fa';
 
@@ -13,168 +14,199 @@ const AboutUsPage = () => {
   const values = [
     {
       icon: SparklesIcon,
-      title: 'Handpicked with Care',
+      title: 'Handpicked',
       description:
         'Every piece is personally selected and quality-checked before it reaches you.',
     },
     {
       icon: HeartIcon,
-      title: 'Made with Love',
+      title: 'Made with Care',
       description:
-        'Jewellery is more than an accessory — it is a feeling, a memory, a moment.',
+        'Jewellery is more than an accessory. It holds memories, moments, and meaning.',
     },
     {
       icon: ShieldCheckIcon,
-      title: 'Trust & Transparency',
+      title: 'Honest Pricing',
       description:
-        'Fair pricing, certified materials, and honest service. Always.',
+        'Fair prices, no hidden charges, certified materials, always.',
     },
     {
       icon: StarIcon,
-      title: 'Timeless Designs',
+      title: 'Timeless Design',
       description:
-        'Curated styles that never go out of fashion — for every occasion.',
+        'Curated styles that stay beautiful for years, not seasons.',
     },
   ];
 
   const stats = [
     { label: 'Happy Customers', value: '1,000+' },
-    { label: 'Unique Designs', value: '200+' },
-    { label: '5-Star Reviews', value: '500+' },
+    { label: 'Designs', value: '200+' },
     { label: 'Cities Served', value: '50+' },
+    { label: 'Average Rating', value: '4.9' },
   ];
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ================================
-          HERO
-      ================================ */}
-      <section className="relative pt-32 pb-20 bg-gradient-to-br from-amber-50 via-white to-yellow-50 overflow-hidden">
-        <div className="absolute top-20 -right-20 w-96 h-96 bg-yellow-200/40 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
-
-        <div className="container-custom relative z-10 text-center max-w-4xl mx-auto">
+    <div className="bg-cream-100 overflow-x-hidden">
+      {/* ==========================================
+          HERO — Editorial
+      ========================================== */}
+      <section className="container-editorial pt-10 md:pt-16 pb-12 md:pb-20">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* Text */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="lg:col-span-5 space-y-5"
           >
-            <div className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-700 px-4 py-2 rounded-full border border-yellow-200 mb-6">
-              <SparklesIcon className="w-4 h-4" />
-              <span className="text-sm font-semibold">
-                About The Charm Boutique
-              </span>
-            </div>
+            <p className="kicker">Our Story</p>
 
-            <h1 className="text-5xl md:text-6xl font-serif font-bold text-gray-900 mb-6">
-              Where <span className="text-amber-500">Elegance</span> Meets
-              Everyday
+            <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-bold text-ink-800 leading-[1.05]">
+              Small boutique.
+              <br />
+              <span className="italic">Big heart.</span>
             </h1>
 
-            <p className="text-lg text-gray-600 leading-relaxed">
-              We are a modern jewellery boutique bringing you timeless pieces
-              crafted with care. Our mission is simple — to make beautiful
-              jewellery accessible, personal, and unforgettable.
+            <p className="text-sm md:text-base text-ink-600 leading-relaxed max-w-md">
+              The Charm Boutique is a family-run jewellery studio in Mumbai.
+              We handpick every piece ourselves — from delicate everyday
+              accents to statement pieces for the moments that matter.
             </p>
+
+            <div className="pt-2">
+              <Link
+                to="/products"
+                className="inline-flex items-center gap-2 text-sm font-medium text-ink-800 hover:text-burgundy-500 transition-colors border-b border-ink-800 hover:border-burgundy-500 pb-1"
+              >
+                Shop the collection
+                <ArrowRightIcon className="w-4 h-4" />
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Image */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="lg:col-span-7"
+          >
+            <div className="aspect-[4/3] md:aspect-[16/10] overflow-hidden rounded-lg bg-cream-200">
+              <img
+                src="https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=1200&h=800&fit=crop&q=80"
+                alt="The Charm Boutique"
+                className="w-full h-full object-cover"
+                loading="eager"
+              />
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* ================================
-          STATS
-      ================================ */}
-      <section className="py-14 bg-gray-900">
-        <div className="container-custom">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      {/* ==========================================
+          STATS STRIP
+      ========================================== */}
+      <section className="border-y border-line bg-cream-100">
+        <div className="container-editorial">
+          <div className="py-8 md:py-10 grid grid-cols-2 md:grid-cols-4 divide-x divide-line">
             {stats.map((stat, i) => (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                viewport={{ once: true }}
+                className="px-4 md:px-6 text-center first:pl-0 last:pr-0"
               >
-                <p className="text-3xl md:text-4xl font-bold text-amber-400">
+                <p className="font-serif text-2xl md:text-3xl font-bold text-ink-800">
                   {stat.value}
                 </p>
-                <p className="text-sm text-gray-400 mt-1">{stat.label}</p>
-              </motion.div>
+                <p className="text-[11px] md:text-xs uppercase tracking-wider text-ink-500 font-medium mt-1.5">
+                  {stat.label}
+                </p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ================================
-          OUR STORY
-      ================================ */}
-      <section className="py-20">
-        <div className="container-custom grid lg:grid-cols-2 gap-14 items-center">
+      {/* ==========================================
+          THE STORY — Two-column editorial
+      ========================================== */}
+      <section className="container-editorial py-14 md:py-20">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-16 items-center">
+          {/* Image — LEFT on desktop */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
             viewport={{ once: true }}
+            className="lg:col-span-6 order-2 lg:order-1"
           >
-            <img
-              src="https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=800&h=800&fit=crop"
-              alt="Our Story"
-              className="rounded-3xl shadow-2xl"
-            />
+            <div className="aspect-[4/5] overflow-hidden rounded-lg bg-cream-200">
+              <img
+                src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=900&h=1100&fit=crop&q=80"
+                alt="Craftsmanship"
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </div>
           </motion.div>
 
+          {/* Text — RIGHT */}
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
             viewport={{ once: true }}
+            className="lg:col-span-6 order-1 lg:order-2 max-w-lg"
           >
-            <h2 className="text-4xl font-serif font-bold text-gray-900 mb-6">
-              Our Story
+            <p className="kicker mb-4">The Beginning</p>
+
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-ink-800 leading-tight mb-6">
+              It started with a
+              <br />
+              <span className="italic">simple idea.</span>
             </h2>
-            <div className="space-y-4 text-gray-600 leading-relaxed">
+
+            <div className="space-y-4 text-sm md:text-base text-ink-600 leading-relaxed">
               <p>
-                The Charm Boutique began with a simple idea — that beautiful
-                jewellery shouldn't be complicated or overpriced. We wanted to
-                create a place where every piece feels special, whether it's a
-                gift for someone you love or a little treat for yourself.
+                Finding beautiful jewellery shouldn't be complicated or
+                overpriced. So we built a place where every piece feels
+                special — whether it's a gift for someone you love, or a
+                little treat for yourself.
               </p>
               <p>
-                Each item in our collection is handpicked for its craftsmanship,
-                quality, and timeless appeal. From delicate everyday wear to
-                statement pieces for special occasions, we've got something for
-                every moment that matters.
+                We work directly with artisans and verified suppliers, which
+                means better quality and honest prices. No middlemen. No
+                inflated markups. Just beautiful jewellery that lasts.
               </p>
               <p>
-                We are proud to serve customers across India with fast shipping,
-                secure payments, and a personal touch that big brands just can't
-                match.
+                Today, we serve customers across India with fast shipping,
+                secure payments, and a personal touch that big brands just
+                can't match.
               </p>
             </div>
-
-            <Link
-              to="/products"
-              className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full font-semibold hover:from-amber-600 hover:to-yellow-600 transition-all shadow-md"
-            >
-              Explore Our Collection
-              <ArrowRightIcon className="w-4 h-4" />
-            </Link>
           </motion.div>
         </div>
       </section>
 
-      {/* ================================
+      {/* ==========================================
           VALUES
-      ================================ */}
-      <section className="py-20 bg-gray-50">
-        <div className="container-custom">
-          <div className="text-center mb-14">
-            <h2 className="text-4xl font-serif font-bold text-gray-900 mb-3">
-              What We Stand For
+      ========================================== */}
+      <section className="border-t border-line bg-cream-100 py-14 md:py-20">
+        <div className="container-editorial">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-2xl mb-10 md:mb-14"
+          >
+            <p className="kicker mb-3">What We Stand For</p>
+            <h2 className="section-heading">
+              Values, not <span className="italic">marketing.</span>
             </h2>
-            <p className="text-gray-500 max-w-2xl mx-auto">
-              Our values shape every piece we create and every interaction we
-              have with you.
-            </p>
-          </div>
+          </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
             {values.map((value, i) => {
               const Icon = value.icon;
               return (
@@ -182,17 +214,16 @@ const AboutUsPage = () => {
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={{ delay: Math.min(i * 0.08, 0.4) }}
                   viewport={{ once: true }}
-                  className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition-shadow"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center mb-4">
-                    <Icon className="w-6 h-6 text-white" />
+                  <div className="w-9 h-9 mb-5 flex items-center justify-center rounded-full bg-ink-800 text-cream-100">
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <h3 className="font-bold text-gray-900 mb-2">
+                  <h3 className="font-serif text-lg md:text-xl font-bold text-ink-800 mb-2">
                     {value.title}
                   </h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">
+                  <p className="text-sm text-ink-600 leading-relaxed">
                     {value.description}
                   </p>
                 </motion.div>
@@ -202,63 +233,129 @@ const AboutUsPage = () => {
         </div>
       </section>
 
-      {/* ================================
-          CONNECT
-      ================================ */}
-      <section className="py-20 bg-white">
-        <div className="container-custom max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 px-4 py-2 rounded-full border border-pink-200 mb-6">
-            <FaInstagram className="w-4 h-4" />
-            <span className="text-sm font-semibold">Stay Connected</span>
-          </div>
-
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900 mb-4">
-            Follow Us on Instagram
-          </h2>
-          <p className="text-gray-600 mb-8 max-w-xl mx-auto">
-            See our latest collections, behind-the-scenes moments, and styling
-            inspiration. Tag us in your photos to be featured!
-          </p>
-
-          <a
-            href="https://www.instagram.com/_the.charm.boutique_/?hl=en"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-semibold hover:from-pink-600 hover:to-purple-700 transition-all shadow-lg"
+      {/* ==========================================
+          QUOTE / MISSION BANNER
+      ========================================== */}
+      <section className="bg-ink-800 py-14 md:py-20">
+        <div className="container-editorial max-w-3xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center"
           >
-            <FaInstagram className="w-5 h-5" />
-            @_the.charm.boutique_
-          </a>
+            <p className="text-[11px] uppercase tracking-kicker font-semibold text-burgundy-300 mb-6">
+              Our Mission
+            </p>
+
+            <blockquote className="font-serif text-2xl md:text-3xl lg:text-4xl font-bold text-cream-100 leading-tight">
+              "To make beautiful jewellery
+              <br />
+              <span className="italic text-burgundy-300">
+                accessible and personal
+              </span>{' '}
+              — for every moment that matters."
+            </blockquote>
+          </motion.div>
         </div>
       </section>
 
-      {/* ================================
-          CTA
-      ================================ */}
-      <section className="py-20 bg-gradient-to-r from-amber-500 to-yellow-500">
-        <div className="container-custom text-center">
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-white mb-4">
-            Ready to Find Your Perfect Piece?
-          </h2>
-          <p className="text-white/90 mb-8 max-w-xl mx-auto">
-            Browse our collection or reach out — we'd love to help you find
-            something special.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/products"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-amber-600 rounded-full font-semibold hover:bg-gray-100 transition-all shadow-lg"
-            >
-              Shop Now
-              <ArrowRightIcon className="w-5 h-5" />
-            </Link>
-            <Link
-              to="/contact"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-white/10 border-2 border-white/40 text-white rounded-full font-semibold hover:bg-white/20 transition-all"
-            >
-              Contact Us
-            </Link>
+      {/* ==========================================
+          INSTAGRAM CTA
+      ========================================== */}
+      <section className="container-editorial py-14 md:py-20">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="bg-white border border-line rounded-lg p-8 md:p-12"
+        >
+          <div className="grid md:grid-cols-2 gap-8 items-center">
+            {/* Text */}
+            <div>
+              <p className="kicker mb-4">Follow Along</p>
+
+              <h2 className="font-serif text-2xl md:text-3xl lg:text-4xl font-bold text-ink-800 leading-tight mb-4">
+                See our latest drops
+                <br />
+                <span className="italic">on Instagram.</span>
+              </h2>
+
+              <p className="text-sm md:text-base text-ink-600 leading-relaxed mb-6 max-w-md">
+                Behind-the-scenes, new arrivals, styling inspiration, and the
+                stories behind each piece.
+              </p>
+
+              <a
+                href="https://www.instagram.com/_the.charm.boutique_/?hl=en"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-3 bg-ink-800 text-cream-100 rounded text-[11px] uppercase tracking-wider font-semibold hover:bg-burgundy-500 transition-colors"
+              >
+                <FaInstagram className="w-3.5 h-3.5" />
+                @_the.charm.boutique_
+                <ArrowUpRightIcon className="w-3 h-3" />
+              </a>
+            </div>
+
+            {/* Decorative image grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&h=400&fit=crop',
+                'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&h=400&fit=crop',
+                'https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=400&h=400&fit=crop',
+                'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&h=400&fit=crop',
+              ].map((src, i) => (
+                <div
+                  key={i}
+                  className="aspect-square overflow-hidden rounded bg-cream-200"
+                >
+                  <img
+                    src={src}
+                    alt="Instagram preview"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
+        </motion.div>
+      </section>
+
+      {/* ==========================================
+          BOTTOM CTA
+      ========================================== */}
+      <section className="border-t border-line bg-cream-100 py-14 md:py-20">
+        <div className="container-editorial text-center max-w-xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <p className="kicker mb-4">Ready to Shop?</p>
+
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-ink-800 leading-tight mb-4">
+              Find your perfect
+              <br />
+              <span className="italic">piece.</span>
+            </h2>
+
+            <p className="text-sm md:text-base text-ink-600 mb-8">
+              Browse our collection or reach out — we'd love to help you find
+              something special.
+            </p>
+
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Link to="/products" className="btn-solid">
+                Shop Collection
+                <ArrowRightIcon className="w-3.5 h-3.5" />
+              </Link>
+              <Link to="/categories" className="btn-outline">
+                Browse Categories
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
     </div>

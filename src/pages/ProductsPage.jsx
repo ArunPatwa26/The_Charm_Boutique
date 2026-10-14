@@ -4,23 +4,35 @@ import { useSearchParams } from 'react-router-dom';
 import {
   FunnelIcon,
   XMarkIcon,
+  ChevronDownIcon,
   Squares2X2Icon,
   Bars3BottomLeftIcon,
-  ChevronDownIcon,
-  SparklesIcon,
 } from '@heroicons/react/24/outline';
+
 import ProductCard from '../components/products/ProductCard';
 import ProductFilters from '../components/products/ProductFilters';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { getProducts, getCategories } from '../services/productService';
 
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'price_asc', label: 'Price · Low to High' },
+  { value: 'price_desc', label: 'Price · High to Low' },
+  { value: 'rating', label: 'Top Rated' },
+  { value: 'name_asc', label: 'Alphabetical · A–Z' },
+];
+
 const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showFilters, setShowFilters] = useState(false);
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
+
+  const [viewMode, setViewMode] = useState('grid');
 
   const [pagination, setPagination] = useState({
     page: 1,
@@ -40,34 +52,28 @@ const ProductsPage = () => {
   });
 
   // ==========================================
-  // LOCK BODY SCROLL WHEN MOBILE FILTER IS OPEN
+  // BODY SCROLL LOCK — MOBILE FILTERS
   // ==========================================
   useEffect(() => {
-    if (showFilters) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = filtersOpen ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showFilters]);
+  }, [filtersOpen]);
 
   // ==========================================
-  // FETCH CATEGORIES
+  // FETCH CATEGORIES ONCE
   // ==========================================
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchCats = async () => {
       try {
-        const response = await getCategories();
-        if (response.success) {
-          setCategories(response.categories || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
+        const res = await getCategories();
+        if (res.success) setCategories(res.categories || []);
+      } catch {
+        // silent
       }
     };
-    fetchCategories();
+    fetchCats();
   }, []);
 
   // ==========================================
@@ -81,18 +87,17 @@ const ProductsPage = () => {
         limit: pagination.limit,
         ...filters,
       };
-
-      Object.keys(params).forEach((key) => {
-        if (!params[key]) delete params[key];
+      Object.keys(params).forEach((k) => {
+        if (!params[k]) delete params[k];
       });
 
-      const response = await getProducts(params);
-      if (response.success) {
-        setProducts(response.products || []);
-        setPagination(response.pagination || pagination);
+      const res = await getProducts(params);
+      if (res.success) {
+        setProducts(res.products || []);
+        setPagination(res.pagination || pagination);
       }
-    } catch (error) {
-      console.error('Failed to fetch products:', error);
+    } catch (err) {
+      console.error('Fetch products error:', err);
     } finally {
       setLoading(false);
     }
@@ -107,22 +112,17 @@ const ProductsPage = () => {
   // HANDLERS
   // ==========================================
   const handleFilterChange = (newFilters) => {
-    setFilters({ ...filters, ...newFilters });
-    setPagination({ ...pagination, page: 1 });
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
 
     const params = new URLSearchParams();
-    Object.entries({ ...filters, ...newFilters }).forEach(([key, value]) => {
-      if (value) params.set(key, value);
+    Object.entries({ ...filters, ...newFilters }).forEach(([k, v]) => {
+      if (v) params.set(k, v);
     });
     setSearchParams(params);
   };
 
-  const handlePageChange = (newPage) => {
-    setPagination({ ...pagination, page: newPage });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const clearFilters = () => {
+  const handleClearFilters = () => {
     setFilters({
       category: '',
       min_price: '',
@@ -132,35 +132,26 @@ const ProductsPage = () => {
       sort_by: 'newest',
       search: '',
     });
-    setPagination({ ...pagination, page: 1 });
+    setPagination((prev) => ({ ...prev, page: 1 }));
     setSearchParams({});
   };
 
-  const hasActiveFilters = Object.values(filters).some(
-    (value) => value && value !== 'newest'
-  );
+  const handlePageChange = (newPage) => {
+    setPagination((prev) => ({ ...prev, page: newPage }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-  const activeFilterCount = Object.entries(filters).filter(
-    ([key, value]) => value && key !== 'sort_by' && key !== 'search'
-  ).length;
+  const activeFilterCount =
+    ['category', 'material', 'gemstone'].filter((k) => filters[k]).length +
+    (filters.min_price || filters.max_price ? 1 : 0);
 
-  // ==========================================
-  // SORT OPTIONS
-  // ==========================================
-  const sortOptions = [
-    { value: 'newest', label: 'Newest' },
-    { value: 'price_asc', label: 'Price: Low to High' },
-    { value: 'price_desc', label: 'Price: High to Low' },
-    { value: 'rating', label: 'Highest Rated' },
-    { value: 'name_asc', label: 'Name: A to Z' },
-    { value: 'name_desc', label: 'Name: Z to A' },
-  ];
+  const hasActiveFilters = activeFilterCount > 0 || filters.search;
 
   const currentSortLabel =
-    sortOptions.find((o) => o.value === filters.sort_by)?.label || 'Newest';
+    SORT_OPTIONS.find((o) => o.value === filters.sort_by)?.label || 'Newest';
 
   // ==========================================
-  // PAGINATION LOGIC
+  // PAGE NUMBER GENERATOR
   // ==========================================
   const getPageNumbers = () => {
     const pages = [];
@@ -180,384 +171,381 @@ const ProductsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-cream-100 min-h-screen">
       {/* ==========================================
-          PAGE HEADER
+          PAGE HEADER — editorial
       ========================================== */}
-      <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl" />
-
-        <div className="container-custom py-10 md:py-14 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 rounded-full px-4 py-1.5 mb-4">
-              <SparklesIcon className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-xs font-medium text-amber-200">
-                Curated Collection
-              </span>
-            </div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold">
-              Our Collection
-            </h1>
-            <p className="text-gray-300 mt-2 text-sm md:text-base max-w-2xl">
-              Discover timeless pieces crafted with love — from everyday
-              elegance to statement jewellery.
-            </p>
-          </motion.div>
+      <section className="border-b border-line bg-cream-100">
+        <div className="container-editorial py-8 md:py-12">
+          <p className="kicker mb-3">Shop</p>
+          <h1 className="section-heading">
+            All <span className="italic">pieces.</span>
+          </h1>
+          <p className="mt-3 text-sm md:text-base text-ink-600 max-w-xl">
+            Handcrafted jewellery for every moment — from everyday simplicity
+            to statement pieces.
+          </p>
         </div>
-      </div>
+      </section>
 
       {/* ==========================================
           STICKY TOOLBAR
       ========================================== */}
-      <div className="sticky top-16 md:top-[72px] z-30 bg-white/95 backdrop-blur border-b border-gray-100 shadow-sm">
-        <div className="container-custom py-3">
-          <div className="flex items-center justify-between gap-3">
-            {/* Left: Filter button (mobile) + result count */}
-            <div className="flex items-center gap-3">
+      <div className="sticky top-14 md:top-16 z-30 bg-cream-100 border-b border-line">
+        <div className="container-editorial">
+          <div className="py-3 flex items-center justify-between gap-3">
+            {/* LEFT — Filter button (mobile) + Result count */}
+            <div className="flex items-center gap-3 min-w-0">
               <button
-                onClick={() => setShowFilters(true)}
-                className="lg:hidden inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors"
+                onClick={() => setFiltersOpen(true)}
+                className="lg:hidden inline-flex items-center gap-2 px-3.5 py-2 border border-ink-800 rounded text-[11px] uppercase tracking-wider font-medium text-ink-800 hover:bg-ink-800 hover:text-cream-100 transition-colors"
               >
-                <FunnelIcon className="w-4 h-4" />
-                Filters
+                <FunnelIcon className="w-3.5 h-3.5" />
+                Filter
                 {activeFilterCount > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
-                    {activeFilterCount}
+                  <span className="ml-0.5 text-burgundy-500 group-hover:text-cream-100">
+                    · {activeFilterCount}
                   </span>
                 )}
               </button>
 
-              <p className="text-sm text-gray-600 hidden sm:block">
-                <span className="font-semibold text-gray-900">
+              <p className="hidden sm:block text-sm text-ink-600">
+                <span className="text-ink-800 font-medium">
                   {pagination.total}
                 </span>{' '}
-                {pagination.total === 1 ? 'product' : 'products'}
+                {pagination.total === 1 ? 'piece' : 'pieces'}
               </p>
             </div>
 
-            {/* Right: Sort */}
-            <div className="relative">
-              <button
-                onClick={() => setSortOpen(!sortOpen)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Bars3BottomLeftIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Sort:</span>
-                <span className="text-gray-900">{currentSortLabel}</span>
-                <ChevronDownIcon
-                  className={`w-4 h-4 transition-transform ${
-                    sortOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
+            {/* RIGHT — Sort + View toggle */}
+            <div className="flex items-center gap-2">
+              {/* Sort dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setSortOpen(!sortOpen)}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 border border-line rounded text-[11px] uppercase tracking-wider font-medium text-ink-800 hover:border-ink-800 transition-colors bg-white"
+                >
+                  <span className="hidden sm:inline">Sort:</span>
+                  <span className="truncate max-w-[100px] sm:max-w-none">
+                    {currentSortLabel}
+                  </span>
+                  <ChevronDownIcon
+                    className={`w-3.5 h-3.5 transition-transform ${
+                      sortOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
 
-              <AnimatePresence>
-                {sortOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setSortOpen(false)}
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
-                    >
-                      {sortOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => {
-                            handleFilterChange({ sort_by: option.value });
-                            setSortOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                            filters.sort_by === option.value
-                              ? 'bg-amber-50 text-amber-700 font-semibold'
-                              : 'text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
+                <AnimatePresence>
+                  {sortOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setSortOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg border border-line shadow-lg overflow-hidden z-50"
+                      >
+                        {SORT_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => {
+                              handleFilterChange({ sort_by: opt.value });
+                              setSortOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                              filters.sort_by === opt.value
+                                ? 'bg-cream-100 text-burgundy-500 font-medium'
+                                : 'text-ink-700 hover:bg-cream-100'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* View toggle — desktop only */}
+              <div className="hidden md:flex items-center border border-line rounded overflow-hidden bg-white">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-ink-800 text-cream-100'
+                      : 'text-ink-500 hover:bg-cream-100'
+                  }`}
+                  aria-label="Grid view"
+                >
+                  <Squares2X2Icon className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-ink-800 text-cream-100'
+                      : 'text-ink-500 hover:bg-cream-100'
+                  }`}
+                  aria-label="List view"
+                >
+                  <Bars3BottomLeftIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* Active Filters Row */}
-          <AnimatePresence>
-            {hasActiveFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="flex flex-wrap items-center gap-2 pt-3">
-                  {filters.category && (
-                    <FilterChip
-                      label={`Category: ${
-                        categories.find((c) => c.id === filters.category)?.name ||
-                        filters.category
-                      }`}
-                      onRemove={() => handleFilterChange({ category: '' })}
-                    />
-                  )}
-                  {filters.material && (
-                    <FilterChip
-                      label={`Material: ${filters.material}`}
-                      onRemove={() => handleFilterChange({ material: '' })}
-                    />
-                  )}
-                  {filters.gemstone && (
-                    <FilterChip
-                      label={`Gemstone: ${filters.gemstone}`}
-                      onRemove={() => handleFilterChange({ gemstone: '' })}
-                    />
-                  )}
-                  {(filters.min_price || filters.max_price) && (
-                    <FilterChip
-                      label={`Price: ₹${filters.min_price || '0'} – ₹${
-                        filters.max_price || '∞'
-                      }`}
-                      onRemove={() =>
-                        handleFilterChange({ min_price: '', max_price: '' })
-                      }
-                    />
-                  )}
-                  {filters.search && (
-                    <FilterChip
-                      label={`Search: "${filters.search}"`}
-                      onRemove={() => handleFilterChange({ search: '' })}
-                    />
-                  )}
-
-                  <button
-                    onClick={clearFilters}
-                    className="text-xs text-gray-500 hover:text-rose-600 underline transition-colors ml-1"
-                  >
-                    Clear all
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       </div>
 
       {/* ==========================================
-          MAIN CONTENT
+          MAIN — Sidebar + Grid
       ========================================== */}
-      <div className="container-custom py-6 md:py-8">
-        <div className="flex gap-8">
+      <section className="container-editorial py-8 md:py-10">
+        <div className="flex gap-10">
           {/* ==========================================
-              FILTERS SIDEBAR
+              FILTERS SIDEBAR (desktop)
           ========================================== */}
-          <aside
-            className={`
-              fixed inset-0 z-50 lg:relative lg:z-0 lg:block
-              ${showFilters ? 'block' : 'hidden lg:block'}
-            `}
-          >
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm lg:hidden"
-              onClick={() => setShowFilters(false)}
-            />
-
-            {/* Sidebar */}
-            <div
-              className={`
-                fixed inset-y-0 left-0 w-full max-w-sm bg-white shadow-2xl lg:shadow-none
-                lg:static lg:w-72 lg:bg-transparent lg:max-w-none
-                transform transition-transform duration-300 ease-out
-                ${
-                  showFilters
-                    ? 'translate-x-0'
-                    : '-translate-x-full lg:translate-x-0'
-                }
-                flex flex-col
-              `}
-            >
-              {/* Mobile drawer header */}
-              <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <FunnelIcon className="w-5 h-5 text-gray-700" />
-                  <h2 className="text-lg font-bold">Filters</h2>
-                  {activeFilterCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  aria-label="Close filters"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Scrollable filter content */}
-              <div className="flex-1 overflow-y-auto lg:overflow-visible">
-                <div className="p-4 lg:p-0">
-                  <ProductFilters
-                    filters={filters}
-                    categories={categories}
-                    onFilterChange={handleFilterChange}
-                    onClearFilters={clearFilters}
-                  />
-                </div>
-              </div>
-
-              {/* Mobile sticky footer */}
-              {showFilters && (
-                <div className="lg:hidden border-t border-gray-100 p-4 bg-white flex-shrink-0">
-                  <button
-                    onClick={() => setShowFilters(false)}
-                    className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold rounded-xl hover:from-amber-600 hover:to-yellow-600 transition-all shadow-md"
-                  >
-                    Show {pagination.total}{' '}
-                    {pagination.total === 1 ? 'product' : 'products'}
-                  </button>
-                </div>
-              )}
+          <aside className="hidden lg:block w-56 flex-shrink-0">
+            <div className="sticky top-32">
+              <ProductFilters
+                filters={filters}
+                categories={categories}
+                onFilterChange={handleFilterChange}
+                onClearFilters={handleClearFilters}
+              />
             </div>
           </aside>
 
           {/* ==========================================
-              PRODUCTS GRID
+              PRODUCTS AREA
           ========================================== */}
           <main className="flex-1 min-w-0">
+            {/* Active filter chips */}
+            {hasActiveFilters && (
+              <div className="flex flex-wrap items-center gap-2 mb-6">
+                {filters.search && (
+                  <FilterChip
+                    label={`"${filters.search}"`}
+                    onRemove={() => handleFilterChange({ search: '' })}
+                  />
+                )}
+                {filters.category && (
+                  <FilterChip
+                    label={
+                      categories.find((c) => c.id === filters.category)?.name ||
+                      'Category'
+                    }
+                    onRemove={() => handleFilterChange({ category: '' })}
+                  />
+                )}
+                {filters.material && (
+                  <FilterChip
+                    label={filters.material}
+                    onRemove={() => handleFilterChange({ material: '' })}
+                  />
+                )}
+                {filters.gemstone && (
+                  <FilterChip
+                    label={filters.gemstone}
+                    onRemove={() => handleFilterChange({ gemstone: '' })}
+                  />
+                )}
+                {(filters.min_price || filters.max_price) && (
+                  <FilterChip
+                    label={`₹${filters.min_price || '0'}–₹${
+                      filters.max_price || '∞'
+                    }`}
+                    onRemove={() =>
+                      handleFilterChange({ min_price: '', max_price: '' })
+                    }
+                  />
+                )}
+                <button
+                  onClick={handleClearFilters}
+                  className="text-[11px] uppercase tracking-wider font-medium text-ink-500 hover:text-burgundy-500 transition-colors ml-1"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+
+            {/* Loading / Grid / Empty */}
             {loading ? (
-              <div className="flex justify-center items-center py-24">
+              <div className="flex justify-center py-20">
                 <LoadingSpinner size="lg" />
               </div>
             ) : products.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center py-20 bg-white rounded-3xl border border-gray-100"
-              >
-                <div className="w-20 h-20 mx-auto mb-6 bg-gray-50 rounded-full flex items-center justify-center">
-                  <Squares2X2Icon className="w-10 h-10 text-gray-300" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  No products found
-                </h3>
-                <p className="text-gray-500 max-w-md mx-auto mb-6">
-                  We couldn't find any products matching your filters. Try
-                  adjusting them or clear all filters to see everything.
+              <div className="text-center py-20 border border-line rounded-lg bg-white">
+                <p className="font-serif text-xl text-ink-800 mb-2">
+                  Nothing here yet.
+                </p>
+                <p className="text-sm text-ink-500 mb-6">
+                  Try adjusting your filters or search terms.
                 </p>
                 <button
-                  onClick={clearFilters}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold rounded-full hover:from-amber-600 hover:to-yellow-600 transition-all shadow-md"
+                  onClick={handleClearFilters}
+                  className="btn-outline text-xs"
                 >
-                  Clear all filters
+                  Clear filters
                 </button>
-              </motion.div>
+              </div>
+            ) : viewMode === 'grid' ? (
+              /* -------- GRID VIEW -------- */
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+                {products.map((product, i) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.03, 0.3) }}
+                  >
+                    <ProductCard product={product} />
+                  </motion.div>
+                ))}
+              </div>
             ) : (
-              <>
-                {/* Products Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                  <AnimatePresence mode="popLayout">
-                    {products.map((product, index) => (
-                      <motion.div
-                        key={product.id}
-                        layout
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{
-                          duration: 0.3,
-                          delay: Math.min(index * 0.03, 0.3),
-                        }}
-                      >
-                        <ProductCard product={product} />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
+              /* -------- LIST VIEW (desktop only) -------- */
+              <div className="space-y-4">
+                {products.map((product) => (
+                  <ListRow key={product.id} product={product} />
+                ))}
+              </div>
+            )}
 
-                {/* Pagination */}
-                {pagination.pages > 1 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-10 md:mt-12">
-                    <p className="text-sm text-gray-500 order-2 sm:order-1">
-                      Page{' '}
-                      <span className="font-semibold text-gray-900">
-                        {pagination.page}
-                      </span>{' '}
-                      of{' '}
-                      <span className="font-semibold text-gray-900">
-                        {pagination.pages}
+            {/* ==========================================
+                PAGINATION
+            ========================================== */}
+            {pagination.pages > 1 && (
+              <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-line">
+                <p className="text-xs text-ink-500 order-2 sm:order-1">
+                  Page {pagination.page} of {pagination.pages}
+                </p>
+
+                <nav className="flex items-center gap-1 order-1 sm:order-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={pagination.page === 1}
+                    className="px-3 py-1.5 text-xs uppercase tracking-wider font-medium border border-line rounded hover:border-ink-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Prev
+                  </button>
+
+                  {getPageNumbers().map((pageNum, i) =>
+                    pageNum === '...' ? (
+                      <span
+                        key={`dots-${i}`}
+                        className="px-2 text-ink-400 text-xs"
+                      >
+                        …
                       </span>
-                    </p>
-
-                    <nav className="flex items-center gap-1.5 order-1 sm:order-2">
-                      {/* Previous */}
+                    ) : (
                       <button
-                        onClick={() => handlePageChange(pagination.page - 1)}
-                        disabled={pagination.page === 1}
-                        className="px-3 md:px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`min-w-[34px] px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                          pagination.page === pageNum
+                            ? 'bg-ink-800 text-cream-100'
+                            : 'border border-line hover:border-ink-800 text-ink-700'
+                        }`}
                       >
-                        <span className="hidden sm:inline">Previous</span>
-                        <span className="sm:hidden">←</span>
+                        {pageNum}
                       </button>
+                    )
+                  )}
 
-                      {/* Page numbers */}
-                      {getPageNumbers().map((pageNum, idx) =>
-                        pageNum === '...' ? (
-                          <span
-                            key={`dots-${idx}`}
-                            className="px-2 text-gray-400"
-                          >
-                            …
-                          </span>
-                        ) : (
-                          <button
-                            key={pageNum}
-                            onClick={() => handlePageChange(pageNum)}
-                            className={`
-                              min-w-[40px] px-3 py-2 rounded-xl text-sm font-medium transition-all
-                              ${
-                                pagination.page === pageNum
-                                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-md'
-                                  : 'border border-gray-200 hover:bg-gray-50 text-gray-700'
-                              }
-                            `}
-                          >
-                            {pageNum}
-                          </button>
-                        )
-                      )}
-
-                      {/* Next */}
-                      <button
-                        onClick={() => handlePageChange(pagination.page + 1)}
-                        disabled={pagination.page === pagination.pages}
-                        className="px-3 md:px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <span className="hidden sm:inline">Next</span>
-                        <span className="sm:hidden">→</span>
-                      </button>
-                    </nav>
-                  </div>
-                )}
-              </>
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={pagination.page === pagination.pages}
+                    className="px-3 py-1.5 text-xs uppercase tracking-wider font-medium border border-line rounded hover:border-ink-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
             )}
           </main>
         </div>
-      </div>
+      </section>
+
+      {/* ==========================================
+          MOBILE FILTER SHEET
+      ========================================== */}
+      <AnimatePresence>
+        {filtersOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 bg-ink-900/40 lg:hidden"
+              onClick={() => setFiltersOpen(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 32, stiffness: 320 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl max-h-[88vh] flex flex-col lg:hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+                <h2 className="text-sm font-semibold tracking-wide">
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="ml-2 text-burgundy-500">
+                      · {activeFilterCount}
+                    </span>
+                  )}
+                </h2>
+                <button
+                  onClick={() => setFiltersOpen(false)}
+                  className="p-1.5 -mr-1.5 hover:bg-cream-100 rounded transition-colors"
+                  aria-label="Close"
+                >
+                  <XMarkIcon className="w-5 h-5 text-ink-700" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto px-5">
+                <ProductFilters
+                  filters={filters}
+                  categories={categories}
+                  onFilterChange={handleFilterChange}
+                  onClearFilters={handleClearFilters}
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-line p-4 bg-white">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      handleClearFilters();
+                      setFiltersOpen(false);
+                    }}
+                    className="flex-1 py-3 border border-ink-800 rounded text-[11px] uppercase tracking-wider font-semibold text-ink-800 hover:bg-cream-100 transition-colors"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={() => setFiltersOpen(false)}
+                    className="flex-1 py-3 bg-ink-800 text-cream-100 rounded text-[11px] uppercase tracking-wider font-semibold hover:bg-burgundy-500 transition-colors"
+                  >
+                    Show {pagination.total}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -566,16 +554,71 @@ const ProductsPage = () => {
 // FILTER CHIP
 // ==========================================
 const FilterChip = ({ label, onRemove }) => (
-  <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 bg-white border border-amber-200 text-amber-800 rounded-full text-xs font-medium shadow-sm">
+  <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 bg-white border border-line text-ink-700 rounded text-xs">
     {label}
     <button
       onClick={onRemove}
-      className="w-5 h-5 rounded-full hover:bg-amber-100 flex items-center justify-center transition-colors"
+      className="w-4 h-4 rounded-full hover:bg-cream-200 flex items-center justify-center transition-colors"
       aria-label={`Remove ${label}`}
     >
-      <XMarkIcon className="w-3.5 h-3.5" />
+      <XMarkIcon className="w-3 h-3" />
     </button>
   </span>
 );
+
+// ==========================================
+// LIST ROW (desktop list view)
+// ==========================================
+const ListRow = ({ product }) => {
+  const discount = product.discount_price
+    ? Math.round(
+        ((product.price - product.discount_price) / product.price) * 100
+      )
+    : 0;
+
+  return (
+    <a
+      href={`/products/${product.id}`}
+      className="group flex gap-5 p-4 bg-white border border-line rounded-lg hover:border-ink-800 transition-colors"
+    >
+      <div className="w-28 h-32 flex-shrink-0 rounded overflow-hidden bg-cream-200">
+        <img
+          src={product.main_image || product.images?.[0]}
+          alt={product.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        />
+      </div>
+      <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+        <div>
+          <h3 className="font-medium text-ink-800 mb-1 group-hover:text-burgundy-500 transition-colors">
+            {product.name}
+          </h3>
+          <p className="text-sm text-ink-500 line-clamp-2">
+            {product.description}
+          </p>
+        </div>
+        <div className="flex items-baseline gap-2">
+          {product.discount_price ? (
+            <>
+              <span className="text-base font-semibold text-burgundy-500">
+                ₹{Number(product.discount_price).toLocaleString('en-IN')}
+              </span>
+              <span className="text-sm text-ink-400 line-through">
+                ₹{Number(product.price).toLocaleString('en-IN')}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-burgundy-500 ml-auto">
+                {discount}% off
+              </span>
+            </>
+          ) : (
+            <span className="text-base font-semibold text-ink-800">
+              ₹{Number(product.price).toLocaleString('en-IN')}
+            </span>
+          )}
+        </div>
+      </div>
+    </a>
+  );
+};
 
 export default ProductsPage;

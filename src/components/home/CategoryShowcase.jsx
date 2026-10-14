@@ -10,7 +10,7 @@ import { getCategories } from '../../services/productService';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=600&h=600&fit=crop';
+  'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=500&h=600&fit=crop';
 
 const CategoryShowcase = () => {
   const [categories, setCategories] = useState([]);
@@ -35,10 +35,22 @@ const CategoryShowcase = () => {
   const displayedCategories = categories.slice(0, 8);
 
   return (
-    <section className="relative py-14 md:py-20 bg-gradient-to-b from-white via-gray-50/50 to-white overflow-hidden">
-      {/* Background accents */}
-      <div className="absolute top-20 right-0 w-72 h-72 bg-amber-100/40 rounded-full blur-3xl" />
-      <div className="absolute bottom-20 left-0 w-72 h-72 bg-yellow-100/40 rounded-full blur-3xl" />
+    <section
+      className="py-14 md:py-20 relative overflow-hidden"
+      style={{
+        background:
+          'linear-gradient(180deg, #fffbf5 0%, #fdf6f0 100%)',
+      }}
+    >
+      {/* Decorative orbs */}
+      <div
+        className="absolute top-10 right-0 w-72 md:w-96 h-72 md:h-96 rounded-full blur-3xl opacity-30 pointer-events-none"
+        style={{ backgroundColor: '#f5ceb9' }}
+      />
+      <div
+        className="absolute bottom-10 left-0 w-72 md:w-96 h-72 md:h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
+        style={{ backgroundColor: '#e5ccdd' }}
+      />
 
       <div className="container-custom relative z-10">
         {/* ==========================================
@@ -49,25 +61,38 @@ const CategoryShowcase = () => {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="text-center mb-10 md:mb-14 max-w-2xl mx-auto"
+          className="text-center mb-8 md:mb-12 max-w-2xl mx-auto"
         >
-          <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full px-4 py-1.5 mb-4">
-            <SparklesIcon className="w-3.5 h-3.5 text-amber-600" />
-            <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-rose-200 bg-white/80 backdrop-blur-sm shadow-sm mb-4">
+            <SparklesIcon className="w-3.5 h-3.5" style={{ color: '#d99b82' }} />
+            <span
+              className="text-[10px] md:text-xs font-semibold tracking-wider uppercase"
+              style={{ color: '#a35f47' }}
+            >
               Shop by Category
             </span>
           </div>
 
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold text-gray-900 mb-3">
+          <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold text-plum-900 leading-tight">
             Explore Our{' '}
-            <span className="bg-gradient-to-r from-amber-600 to-yellow-500 bg-clip-text text-transparent">
+            <span
+              className="italic"
+              style={{
+                background:
+                  'linear-gradient(90deg, #a35f47, #d99b82, #e8b4a0, #d99b82, #a35f47)',
+                backgroundSize: '200% auto',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
               Collections
             </span>
           </h2>
 
-          <p className="text-sm md:text-base text-gray-600 leading-relaxed">
+          <p className="text-sm md:text-base text-plum-600 mt-3 md:mt-4 max-w-xl mx-auto leading-relaxed">
             Find your perfect piece from our curated selection of premium
-            jewellery
+            jewellery.
           </p>
         </motion.div>
 
@@ -80,42 +105,37 @@ const CategoryShowcase = () => {
           </div>
         ) : displayedCategories.length === 0 ? (
           /* ==========================================
-              EMPTY STATE
+             EMPTY STATE
           ========================================== */
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center py-14 bg-white rounded-3xl border border-gray-100 max-w-md mx-auto"
+            className="text-center py-14 bg-white rounded-3xl border border-plum-100 max-w-md mx-auto"
           >
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Squares2X2Icon className="w-10 h-10 text-gray-300" />
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: '#fdf6f0' }}
+            >
+              <Squares2X2Icon
+                className="w-10 h-10"
+                style={{ color: '#d99b82' }}
+              />
             </div>
-            <p className="text-gray-700 font-semibold mb-1">
+            <p className="text-plum-800 font-semibold mb-1">
               No categories yet
             </p>
-            <p className="text-sm text-gray-400 px-6">
-              Categories will appear here once added
+            <p className="text-sm text-plum-500 px-6">
+              Categories will appear here once added.
             </p>
           </motion.div>
         ) : (
           /* ==========================================
-              CATEGORIES GRID
+             CATEGORIES
           ========================================== */
           <>
-            {/* Mobile: horizontal scroll — Desktop: grid */}
-            <div className="hidden md:grid grid-cols-3 lg:grid-cols-4 gap-5 lg:gap-6">
-              {displayedCategories.map((category, index) => (
-                <CategoryCard
-                  key={category.id}
-                  category={category}
-                  index={index}
-                />
-              ))}
-            </div>
-
-            {/* Mobile: horizontal snap scroll */}
+            {/* -------- MOBILE: Horizontal Snap Scroll -------- */}
             <div className="md:hidden -mx-4 px-4">
-              <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-hide">
+              <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 scrollbar-hide">
                 {displayedCategories.map((category, index) => (
                   <div
                     key={category.id}
@@ -125,11 +145,20 @@ const CategoryShowcase = () => {
                   </div>
                 ))}
               </div>
-
-              {/* Scroll hint */}
-              <p className="text-center text-[11px] text-gray-400 mt-1">
+              <p className="text-center text-[10px] text-plum-400 mt-2 tracking-wide">
                 Swipe to see more →
               </p>
+            </div>
+
+            {/* -------- DESKTOP/TABLET: Grid -------- */}
+            <div className="hidden md:grid grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {displayedCategories.map((category, index) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  index={index}
+                />
+              ))}
             </div>
           </>
         )}
@@ -143,11 +172,15 @@ const CategoryShowcase = () => {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             viewport={{ once: true }}
-            className="text-center mt-10 md:mt-14"
+            className="text-center mt-8 md:mt-12"
           >
             <Link
               to="/categories"
-              className="inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-3.5 bg-gray-900 text-white rounded-full font-semibold text-sm hover:bg-amber-600 transition-all duration-300 shadow-md hover:shadow-lg group"
+              className="group inline-flex items-center gap-2 px-6 md:px-8 py-3 md:py-3.5 rounded-full text-white font-semibold text-sm transition-all shadow-lg hover:-translate-y-0.5"
+              style={{
+                background: 'linear-gradient(135deg, #2d1b2e 0%, #43243c 100%)',
+                boxShadow: '0 10px 30px rgba(45, 27, 46, 0.25)',
+              }}
             >
               View All Categories
               <ArrowRightIcon className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -181,9 +214,9 @@ const CategoryCard = ({ category, index }) => {
     >
       <Link
         to={`/categories/${category.id}`}
-        className="block relative rounded-2xl md:rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 md:hover:-translate-y-2 ring-1 ring-gray-100"
+        className="block relative rounded-2xl md:rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 md:hover:-translate-y-2 border border-plum-100"
       >
-        <div className="relative aspect-[3/4] md:aspect-[4/5] bg-gray-100">
+        <div className="relative aspect-[3/4] md:aspect-[4/5] bg-plum-100">
           {/* Image */}
           <img
             src={category.image || FALLBACK_IMAGE}
@@ -195,32 +228,55 @@ const CategoryCard = ({ category, index }) => {
             }}
           />
 
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/5 group-hover:from-black/90 transition-colors duration-500" />
+          {/* Dark overlay */}
+          <div
+            className="absolute inset-0 transition-opacity duration-500"
+            style={{
+              background:
+                'linear-gradient(to top, rgba(45,27,46,0.85) 0%, rgba(45,27,46,0.15) 50%, transparent 100%)',
+            }}
+          />
 
-          {/* Subtle amber tint on hover */}
-          <div className="absolute inset-0 bg-gradient-to-t from-amber-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          {/* Rose tint on hover */}
+          <div
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            style={{
+              background:
+                'linear-gradient(to top, rgba(163,95,71,0.4) 0%, transparent 60%)',
+            }}
+          />
 
           {/* Content */}
           <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5">
             <h3
-              className="text-white font-serif font-bold text-sm md:text-lg lg:text-xl mb-1.5 md:mb-2 leading-tight drop-shadow-md"
+              className="text-white font-serif font-bold text-sm md:text-lg lg:text-xl mb-1.5 md:mb-2 leading-tight drop-shadow-md line-clamp-2"
               title={category.name}
             >
               {displayName}
             </h3>
 
-            <p className="hidden sm:block text-white/70 text-[11px] md:text-xs mb-2.5 md:mb-3 line-clamp-1">
-              {category.description
-                ? category.description.length > 45
-                  ? category.description.substring(0, 45).trim() + '…'
-                  : category.description
-                : 'Explore Collection'}
-            </p>
+            <div className="flex items-center justify-between">
+              {/* Desktop shows subtitle */}
+              <p className="hidden sm:block text-white/70 text-[11px] md:text-xs line-clamp-1">
+                {category.description
+                  ? category.description.length > 40
+                    ? category.description.substring(0, 40).trim() + '…'
+                    : category.description
+                  : 'Explore Collection'}
+              </p>
 
-            <div className="inline-flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-semibold bg-white/20 backdrop-blur-md border border-white/20 px-2.5 md:px-3.5 py-1 md:py-1.5 rounded-full group-hover:bg-amber-500 group-hover:border-amber-500 transition-all duration-300">
-              <span className="text-white">Shop Now</span>
-              <ArrowRightIcon className="w-3 h-3 md:w-3.5 md:h-3.5 text-white group-hover:translate-x-0.5 transition-transform" />
+              {/* Arrow button */}
+              <div
+                className="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center flex-shrink-0 ml-auto transition-all group-hover:scale-110"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.95)',
+                }}
+              >
+                <ArrowRightIcon
+                  className="w-3.5 h-3.5 md:w-4 md:h-4 transition-transform group-hover:translate-x-0.5"
+                  style={{ color: '#2d1b2e' }}
+                />
+              </div>
             </div>
           </div>
         </div>

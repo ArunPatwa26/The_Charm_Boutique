@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ClockIcon,
   CheckCircleIcon,
@@ -9,16 +9,56 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
-  FunnelIcon,
   ShoppingBagIcon,
   CubeIcon,
   QrCodeIcon,
-  ArrowTopRightOnSquareIcon,
+  ArrowUpRightIcon,
 } from '@heroicons/react/24/outline';
+
 import { getOrders } from '../services/orderService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import PaymentStatusBadge from '../components/common/PaymentStatusBadge';
 import toast from 'react-hot-toast';
+
+// ==========================================
+// STATUS CONFIG
+// ==========================================
+const STATUS_META = {
+  pending: {
+    label: 'Pending',
+    dot: 'bg-ink-400',
+    text: 'text-ink-600',
+  },
+  processing: {
+    label: 'Processing',
+    dot: 'bg-blue-500',
+    text: 'text-blue-700',
+  },
+  shipped: {
+    label: 'Shipped',
+    dot: 'bg-purple-500',
+    text: 'text-purple-700',
+  },
+  delivered: {
+    label: 'Delivered',
+    dot: 'bg-green-600',
+    text: 'text-green-700',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    dot: 'bg-red-500',
+    text: 'text-red-700',
+  },
+};
+
+const STATUS_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'processing', label: 'Processing' },
+  { key: 'shipped', label: 'Shipped' },
+  { key: 'delivered', label: 'Delivered' },
+  { key: 'cancelled', label: 'Cancelled' },
+];
 
 const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
@@ -32,347 +72,481 @@ const OrdersPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
-    fetchOrders();
-  }, [pagination.page, statusFilter]);
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const response = await getOrders(pagination.page, pagination.limit);
-      if (response.success) {
-        setOrders(response.orders || []);
-        setPagination((prev) => ({
-          ...prev,
-          ...(response.pagination || {}),
-        }));
+    const fetchOrders = async () => {
+      setLoading(true);
+      try {
+        const response = await getOrders(pagination.page, pagination.limit);
+        if (response.success) {
+          setOrders(response.orders || []);
+          setPagination((prev) => ({
+            ...prev,
+            ...(response.pagination || {}),
+          }));
+        }
+      } catch (error) {
+        console.error('Fetch Orders Error:', error);
+        toast.error('Failed to load orders');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Fetch Orders Error:', error);
-      toast.error('Failed to load orders');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: 'bg-yellow-100 text-yellow-700',
-      processing: 'bg-blue-100 text-blue-700',
-      shipped: 'bg-purple-100 text-purple-700',
-      delivered: 'bg-green-100 text-green-700',
-      cancelled: 'bg-red-100 text-red-700',
     };
-    return colors[status] || 'bg-gray-100 text-gray-700';
-  };
-
-  const getStatusIcon = (status) => {
-    const icons = {
-      pending: ClockIcon,
-      processing: CubeIcon,
-      shipped: TruckIcon,
-      delivered: CheckCircleIcon,
-      cancelled: XMarkIcon,
-    };
-    const Icon = icons[status] || ShoppingBagIcon;
-    return <Icon className="w-4 h-4" />;
-  };
+    fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.page, statusFilter]);
 
   const formatDate = (date) => {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
+    return new Date(date).toLocaleDateString('en-IN', {
       day: 'numeric',
+      month: 'short',
+      year: 'numeric',
     });
   };
 
-  // ============================================================
-  // Payment CTA logic — shows "Pay Now" if UPI pending
-  // ============================================================
-  const needsPayment = (order) => {
-    return (
-      order.payment_method === 'upi' &&
-      (order.payment_status === 'pending' ||
-        order.payment_status === 'rejected')
-    );
-  };
+  const needsPayment = (order) =>
+    order.payment_method === 'upi' &&
+    (order.payment_status === 'pending' ||
+      order.payment_status === 'rejected');
 
-  const isVerifying = (order) => {
-    return (
-      order.payment_method === 'upi' &&
-      order.payment_status === 'verification_pending'
-    );
-  };
+  const isVerifying = (order) =>
+    order.payment_method === 'upi' &&
+    order.payment_status === 'verification_pending';
 
   const filteredOrders = orders.filter(
     (order) => statusFilter === 'all' || order.status === statusFilter
   );
 
+  // ==========================================
+  // LOADING
+  // ==========================================
   if (loading && pagination.page === 1) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
+      <div className="min-h-screen flex items-center justify-center bg-cream-100">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container-custom max-w-5xl px-4 mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold">My Orders</h1>
-              <p className="text-gray-600 mt-1">Track and manage your orders</p>
+    <div className="min-h-screen bg-cream-100 pb-16">
+      {/* ==========================================
+          PAGE HEADER
+      ========================================== */}
+      <section className="border-b border-line bg-cream-100">
+        <div className="container-editorial py-8 md:py-12">
+          <p className="kicker mb-3">My Account</p>
+          <h1 className="section-heading">
+            Your <span className="italic">orders.</span>
+          </h1>
+          <p className="mt-3 text-sm md:text-base text-ink-600 max-w-xl">
+            Track and manage every order in one place.
+          </p>
+        </div>
+      </section>
+
+      {/* ==========================================
+          FILTERS — horizontal scroll on mobile
+      ========================================== */}
+      <div className="sticky top-14 md:top-16 z-30 border-b border-line bg-cream-100">
+        <div className="container-editorial">
+          <div className="py-3 -mx-5 md:mx-0 px-5 md:px-0 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-2 min-w-max md:min-w-0 md:flex-wrap">
+              {STATUS_FILTERS.map((f) => {
+                const active = statusFilter === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => {
+                      setStatusFilter(f.key);
+                      setPagination((prev) => ({ ...prev, page: 1 }));
+                    }}
+                    className={`px-3.5 py-2 rounded text-[11px] uppercase tracking-wider font-medium transition-colors whitespace-nowrap border ${
+                      active
+                        ? 'bg-ink-800 text-cream-100 border-ink-800'
+                        : 'bg-transparent text-ink-600 border-line hover:border-ink-800 hover:text-ink-800'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
             </div>
-            <Link to="/products" className="btn-secondary inline-flex items-center gap-2">
-              Continue Shopping
+          </div>
+        </div>
+      </div>
+
+      {/* ==========================================
+          ORDERS LIST
+      ========================================== */}
+      <section className="container-editorial py-8 md:py-10">
+        {filteredOrders.length === 0 ? (
+          /* ---------- EMPTY STATE ---------- */
+          <div className="text-center py-20 max-w-md mx-auto">
+            <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center rounded-full bg-cream-200">
+              <ShoppingBagIcon className="w-10 h-10 text-ink-400" />
+            </div>
+            <h2 className="font-serif text-2xl font-bold text-ink-800 mb-3">
+              {statusFilter === 'all'
+                ? 'No orders yet.'
+                : `No ${statusFilter} orders.`}
+            </h2>
+            <p className="text-sm text-ink-500 mb-8">
+              {statusFilter === 'all'
+                ? 'Start exploring our collection and place your first order.'
+                : 'Try a different filter to see your orders.'}
+            </p>
+            <Link to="/products" className="btn-solid">
+              Shop Collection
             </Link>
           </div>
-
-          {/* Filters */}
-          <div className="bg-white rounded-2xl shadow-sm p-4 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <FunnelIcon className="w-5 h-5 text-gray-500" />
-              <h2 className="font-semibold text-gray-700">Filter Orders</h2>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => {
-                  setStatusFilter('all');
-                  setPagination((prev) => ({ ...prev, page: 1 }));
-                }}
-                className={`px-4 py-2 rounded-full transition-all duration-300 ${
-                  statusFilter === 'all'
-                    ? 'bg-yellow-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                All Orders
-              </button>
-              {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => {
-                    setStatusFilter(status);
-                    setPagination((prev) => ({ ...prev, page: 1 }));
-                  }}
-                  className={`px-4 py-2 rounded-full transition-all duration-300 capitalize ${
-                    statusFilter === status
-                      ? 'bg-yellow-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Orders List */}
-          {filteredOrders.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <ShoppingBagIcon className="w-12 h-12 text-gray-400" />
+        ) : (
+          <>
+            {/* ---------- DESKTOP: Clean rows ---------- */}
+            <div className="hidden md:block border border-line rounded-lg overflow-hidden bg-white">
+              {/* Table header */}
+              <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-cream-100 border-b border-line text-[10px] uppercase tracking-wider font-semibold text-ink-500">
+                <div className="col-span-3">Order</div>
+                <div className="col-span-3">Date & Items</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-2">Payment</div>
+                <div className="col-span-2 text-right">Total</div>
               </div>
-              <h3 className="text-xl font-bold mb-2">No orders yet</h3>
-              <p className="text-gray-500 mb-6">
-                {statusFilter === 'all'
-                  ? "You haven't placed any orders yet. Start shopping!"
-                  : `No ${statusFilter} orders found.`}
-              </p>
-              <Link to="/products" className="btn-primary inline-flex items-center gap-2">
-                Start Shopping
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredOrders.map((order, index) => {
-                const orderKey = order.id || order._id;
-                const payPending = needsPayment(order);
-                const verifying = isVerifying(order);
 
-                return (
-                  <motion.div
-                    key={orderKey}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
-                  >
-                    <div className="p-6">
-                      {/* Order Header */}
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                          <p className="text-sm text-gray-500">
-                            Order #{order.order_number || order.id}
-                          </p>
-                          <p className="text-sm text-gray-500">{formatDate(order.created_at)}</p>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <span
-                            className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${getStatusColor(
-                              order.status
-                            )}`}
-                          >
-                            {getStatusIcon(order.status)}
-                            <span className="capitalize">{order.status}</span>
-                          </span>
-                          {/* Payment status badge */}
-                          <PaymentStatusBadge status={order.payment_status} size="sm" />
-                          <span className="text-lg font-bold text-yellow-600">
-                            ₹{Number(order.total_price || 0).toFixed(2)}
-                          </span>
-                        </div>
+              <AnimatePresence initial={false}>
+                {filteredOrders.map((order, index) => {
+                  const orderKey = order.id || order._id;
+                  const meta = STATUS_META[order.status] || STATUS_META.pending;
+                  const payPending = needsPayment(order);
+                  const verifying = isVerifying(order);
+
+                  return (
+                    <motion.div
+                      key={orderKey}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: Math.min(index * 0.04, 0.3) }}
+                      className={`grid grid-cols-12 gap-4 px-5 py-4 items-center border-b border-line last:border-b-0 hover:bg-cream-50 transition-colors ${
+                        payPending ? 'bg-burgundy-50/30' : ''
+                      }`}
+                    >
+                      {/* Order */}
+                      <div className="col-span-3">
+                        <Link
+                          to={`/orders/${orderKey}`}
+                          className="font-medium text-ink-800 hover:text-burgundy-500 transition-colors text-sm"
+                        >
+                          #{order.order_number || 'N/A'}
+                        </Link>
+                        <p className="text-[10px] text-ink-400 mt-0.5 font-mono">
+                          {(orderKey || '').slice(0, 8)}
+                        </p>
                       </div>
 
-                      {/* Payment alert strip */}
+                      {/* Date & Items */}
+                      <div className="col-span-3">
+                        <p className="text-xs text-ink-700">
+                          {formatDate(order.created_at)}
+                        </p>
+                        <p className="text-[11px] text-ink-400 mt-0.5">
+                          {order.items?.length || 0} item
+                          {order.items?.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+
+                      {/* Status */}
+                      <div className="col-span-2">
+                        <span className="inline-flex items-center gap-1.5 text-xs">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${meta.dot}`}
+                          />
+                          <span className={`font-medium ${meta.text}`}>
+                            {meta.label}
+                          </span>
+                        </span>
+                      </div>
+
+                      {/* Payment */}
+                      <div className="col-span-2">
+                        <PaymentStatusBadge
+                          status={order.payment_status}
+                          size="sm"
+                        />
+                      </div>
+
+                      {/* Total */}
+                      <div className="col-span-2 text-right">
+                        <span className="font-medium text-ink-800 text-sm">
+                          ₹
+                          {Number(order.total_price || 0).toLocaleString(
+                            'en-IN'
+                          )}
+                        </span>
+                        <Link
+                          to={`/orders/${orderKey}`}
+                          className="block mt-1 text-[10px] uppercase tracking-wider font-medium text-ink-500 hover:text-burgundy-500 transition-colors"
+                        >
+                          View →
+                        </Link>
+                      </div>
+
+                      {/* Payment CTA row if needed */}
+                      {(payPending || verifying) && (
+                        <div className="col-span-12 pt-3 mt-3 border-t border-line">
+                          {payPending ? (
+                            <div className="flex items-center justify-between gap-4 flex-wrap">
+                              <div className="flex items-start gap-2.5">
+                                <QrCodeIcon className="w-4 h-4 text-burgundy-500 flex-shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-xs font-medium text-ink-800">
+                                    {order.payment_status === 'rejected'
+                                      ? 'Payment was rejected'
+                                      : 'Payment pending'}
+                                  </p>
+                                  <p className="text-[11px] text-ink-500 mt-0.5">
+                                    Complete UPI payment to confirm this order
+                                  </p>
+                                </div>
+                              </div>
+                              <Link
+                                to={`/payment/upi/${orderKey}`}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-ink-800 text-cream-100 text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-burgundy-500 transition-colors"
+                              >
+                                Pay Now
+                                <ArrowUpRightIcon className="w-3 h-3" />
+                              </Link>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-4 flex-wrap">
+                              <div className="flex items-start gap-2.5">
+                                <ClockIcon className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5 animate-pulse" />
+                                <div>
+                                  <p className="text-xs font-medium text-ink-800">
+                                    Verifying payment
+                                  </p>
+                                  <p className="text-[11px] text-ink-500 mt-0.5">
+                                    We'll confirm within 24 hours
+                                  </p>
+                                </div>
+                              </div>
+                              <Link
+                                to={`/payment/status/${orderKey}`}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-ink-800 text-ink-800 text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-ink-800 hover:text-cream-100 transition-colors"
+                              >
+                                View Status
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+
+            {/* ---------- MOBILE: card list ---------- */}
+            <div className="md:hidden space-y-4">
+              <AnimatePresence initial={false}>
+                {filteredOrders.map((order, index) => {
+                  const orderKey = order.id || order._id;
+                  const meta = STATUS_META[order.status] || STATUS_META.pending;
+                  const payPending = needsPayment(order);
+                  const verifying = isVerifying(order);
+
+                  return (
+                    <motion.div
+                      key={orderKey}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(index * 0.04, 0.3) }}
+                      className={`bg-white rounded-lg border overflow-hidden ${
+                        payPending
+                          ? 'border-burgundy-200'
+                          : 'border-line'
+                      }`}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between p-4 pb-3 border-b border-line">
+                        <div className="min-w-0">
+                          <Link
+                            to={`/orders/${orderKey}`}
+                            className="font-medium text-ink-800 text-sm hover:text-burgundy-500 transition-colors"
+                          >
+                            #{order.order_number || 'N/A'}
+                          </Link>
+                          <p className="text-[11px] text-ink-400 mt-0.5">
+                            {formatDate(order.created_at)}
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 text-xs flex-shrink-0">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${meta.dot}`}
+                          />
+                          <span className={`font-medium ${meta.text}`}>
+                            {meta.label}
+                          </span>
+                        </span>
+                      </div>
+
+                      {/* Items preview */}
+                      <div className="p-4 flex items-center gap-3 border-b border-line">
+                        <div className="flex -space-x-3 flex-shrink-0">
+                          {(order.items || []).slice(0, 3).map((item, i) => (
+                            <div
+                              key={i}
+                              className="w-10 h-10 rounded-full border-2 border-white bg-cream-200 overflow-hidden"
+                            >
+                              {item.image ? (
+                                <img
+                                  src={item.image}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ShoppingBagIcon className="w-4 h-4 text-ink-400" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-ink-700 truncate">
+                            {order.items?.[0]?.name || 'Product'}
+                            {(order.items?.length || 0) > 1 &&
+                              ` + ${order.items.length - 1} more`}
+                          </p>
+                        </div>
+                        <span className="text-sm font-medium text-ink-800 flex-shrink-0">
+                          ₹
+                          {Number(order.total_price || 0).toLocaleString(
+                            'en-IN'
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Payment row */}
+                      <div className="px-4 py-3 border-b border-line flex items-center justify-between">
+                        <span className="text-[11px] uppercase tracking-wider font-medium text-ink-500">
+                          Payment
+                        </span>
+                        <PaymentStatusBadge
+                          status={order.payment_status}
+                          size="sm"
+                        />
+                      </div>
+
+                      {/* Payment action */}
                       {payPending && (
-                        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl flex items-start gap-3">
-                          <QrCodeIcon className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                          <div className="flex-1 text-sm">
-                            <p className="font-semibold text-yellow-800">
-                              {order.payment_status === 'rejected'
-                                ? 'Payment was rejected — please pay again'
-                                : 'Payment pending'}
-                            </p>
-                            <p className="text-yellow-700 text-xs mt-0.5">
-                              Complete your UPI payment to confirm this order.
-                            </p>
+                        <div className="p-4 bg-burgundy-50/40 border-b border-burgundy-100">
+                          <div className="flex items-start gap-2.5 mb-3">
+                            <QrCodeIcon className="w-4 h-4 text-burgundy-500 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-medium text-ink-800">
+                                {order.payment_status === 'rejected'
+                                  ? 'Payment was rejected'
+                                  : 'Payment pending'}
+                              </p>
+                              <p className="text-[11px] text-ink-500 mt-0.5">
+                                Complete UPI payment to confirm order
+                              </p>
+                            </div>
                           </div>
                           <Link
                             to={`/payment/upi/${orderKey}`}
-                            className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                            className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 bg-ink-800 text-cream-100 text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-burgundy-500 transition-colors"
                           >
                             Pay Now
-                            <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                            <ArrowUpRightIcon className="w-3 h-3" />
                           </Link>
                         </div>
                       )}
 
                       {verifying && (
-                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
-                          <ClockIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5 animate-pulse" />
-                          <div className="flex-1 text-sm">
-                            <p className="font-semibold text-blue-800">
-                              Payment under verification
-                            </p>
-                            <p className="text-blue-700 text-xs mt-0.5">
-                              We'll confirm your order within 24 hours.
-                            </p>
+                        <div className="p-4 bg-blue-50/60 border-b border-blue-100">
+                          <div className="flex items-start gap-2.5 mb-3">
+                            <ClockIcon className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5 animate-pulse" />
+                            <div>
+                              <p className="text-xs font-medium text-ink-800">
+                                Verifying payment
+                              </p>
+                              <p className="text-[11px] text-ink-500 mt-0.5">
+                                We'll confirm within 24 hours
+                              </p>
+                            </div>
                           </div>
                           <Link
                             to={`/payment/status/${orderKey}`}
-                            className="flex-shrink-0 text-xs font-semibold text-blue-700 hover:text-blue-800 px-3 py-1.5"
+                            className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 border border-ink-800 text-ink-800 text-[11px] uppercase tracking-wider font-semibold rounded hover:bg-ink-800 hover:text-cream-100 transition-colors"
                           >
-                            View Status →
+                            View Status
                           </Link>
                         </div>
                       )}
 
-                      {/* Order Items */}
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="flex flex-wrap gap-4">
-                          {(order.items || []).slice(0, 3).map((item, itemIndex) => (
-                            <div
-                              key={item.product || item.product_id || itemIndex}
-                              className="flex items-center gap-3"
-                            >
-                              {item.image ? (
-                                <img
-                                  src={item.image}
-                                  alt={item.name || 'Product'}
-                                  className="w-12 h-12 object-cover rounded-lg"
-                                />
-                              ) : (
-                                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                                  <ShoppingBagIcon className="w-6 h-6 text-gray-400" />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate max-w-[150px]">
-                                  {item.name || 'Product'}
-                                </p>
-                                <p className="text-xs text-gray-500">x{item.quantity || 1}</p>
-                              </div>
-                            </div>
-                          ))}
-                          {(order.items || []).length > 3 && (
-                            <div className="flex items-center text-sm text-gray-500">
-                              +{order.items.length - 3} more items
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Order Actions */}
-                      <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap gap-3">
+                      {/* Actions */}
+                      <div className="p-4 flex items-center justify-between">
                         <Link
                           to={`/orders/${orderKey}`}
-                          className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-700 hover:text-burgundy-500 transition-colors"
                         >
-                          <EyeIcon className="w-4 h-4" />
+                          <EyeIcon className="w-3.5 h-3.5" />
                           View Details
                         </Link>
                         {order.status === 'delivered' && (
-                          <button className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm">
-                            Write a Review
-                          </button>
-                        )}
-                        {order.status === 'pending' && !payPending && (
-                          <button className="inline-flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors text-sm">
-                            Cancel Order
+                          <button className="text-xs font-medium text-ink-700 hover:text-burgundy-500 transition-colors">
+                            Write Review →
                           </button>
                         )}
                       </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-
-              {/* Pagination */}
-              {pagination.pages > 1 && (
-                <div className="flex justify-center mt-8">
-                  <nav className="flex items-center gap-2">
-                    <button
-                      onClick={() =>
-                        setPagination((prev) => ({
-                          ...prev,
-                          page: prev.page - 1,
-                        }))
-                      }
-                      disabled={pagination.page === 1}
-                      className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronLeftIcon className="w-5 h-5" />
-                    </button>
-                    <span className="px-4 py-2 text-sm font-medium">
-                      Page {pagination.page} of {pagination.pages}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setPagination((prev) => ({
-                          ...prev,
-                          page: prev.page + 1,
-                        }))
-                      }
-                      disabled={pagination.page === pagination.pages}
-                      className="px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronRightIcon className="w-5 h-5" />
-                    </button>
-                  </nav>
-                </div>
-              )}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
-          )}
-        </motion.div>
-      </div>
+
+            {/* ==========================================
+                PAGINATION
+            ========================================== */}
+            {pagination.pages > 1 && (
+              <div className="mt-10 pt-6 border-t border-line flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p className="text-xs text-ink-500 order-2 sm:order-1">
+                  Page {pagination.page} of {pagination.pages}
+                </p>
+                <nav className="flex items-center gap-1 order-1 sm:order-2">
+                  <button
+                    onClick={() =>
+                      setPagination((prev) => ({
+                        ...prev,
+                        page: prev.page - 1,
+                      }))
+                    }
+                    disabled={pagination.page === 1}
+                    className="px-3 py-1.5 text-xs uppercase tracking-wider font-medium border border-line rounded hover:border-ink-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Prev
+                  </button>
+                  <span className="px-4 text-xs font-medium text-ink-600">
+                    {pagination.page} / {pagination.pages}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setPagination((prev) => ({
+                        ...prev,
+                        page: prev.page + 1,
+                      }))
+                    }
+                    disabled={pagination.page === pagination.pages}
+                    className="px-3 py-1.5 text-xs uppercase tracking-wider font-medium border border-line rounded hover:border-ink-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            )}
+          </>
+        )}
+      </section>
     </div>
   );
 };
