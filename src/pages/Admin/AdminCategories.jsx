@@ -253,7 +253,7 @@ const AdminCategories = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
           {filteredCategories.map((category, index) => (
             <motion.div
               key={category.id}
@@ -262,7 +262,8 @@ const AdminCategories = () => {
               transition={{ delay: Math.min(index * 0.04, 0.3) }}
               className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
             >
-              <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+              {/* Image */}
+              <div className="relative aspect-square sm:aspect-[4/3] bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
                 {category.image ? (
                   <img
                     src={category.image}
@@ -275,12 +276,13 @@ const AdminCategories = () => {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <FolderIcon className="w-12 h-12 md:w-16 md:h-16 text-gray-300" />
+                    <FolderIcon className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 text-gray-300" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                {/* Status badge — smaller on mobile */}
                 <div
-                  className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${
+                  className={`absolute top-2 right-2 sm:top-3 sm:right-3 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-semibold border ${
                     category.is_active
                       ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
                       : 'bg-gray-100 text-gray-500 border-gray-200'
@@ -288,41 +290,84 @@ const AdminCategories = () => {
                 >
                   {category.is_active ? 'Active' : 'Inactive'}
                 </div>
+
+                {/* Quick edit/delete overlay on hover (desktop only) */}
+                <div className="hidden sm:flex absolute top-2 left-2 sm:top-3 sm:left-3 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleEdit(category)}
+                    className="p-1.5 bg-white/95 backdrop-blur-sm text-gray-700 hover:text-amber-600 rounded-lg shadow-md transition-colors"
+                    aria-label="Edit"
+                  >
+                    <PencilIcon className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(category)}
+                    className="p-1.5 bg-white/95 backdrop-blur-sm text-gray-700 hover:text-red-600 rounded-lg shadow-md transition-colors"
+                    aria-label="Delete"
+                  >
+                    <TrashIcon className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="p-4">
-                <h3 className="text-base md:text-lg font-bold text-gray-900 truncate">
+              {/* Content */}
+              <div className="p-2.5 sm:p-3 md:p-4">
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate">
                   {category.name}
                 </h3>
-                <p className="text-xs md:text-sm text-gray-500 line-clamp-2 mt-0.5 min-h-[2rem]">
+
+                {/* Description — hidden on mobile to keep card compact */}
+                <p className="hidden sm:block text-xs md:text-sm text-gray-500 line-clamp-2 mt-0.5 min-h-[2rem]">
                   {category.description || 'No description'}
                 </p>
 
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                  <div className="flex gap-1">
+                {/* Footer: mobile shows icon buttons, desktop shows date + icons */}
+                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-100">
+                  {/* Mobile: compact action row */}
+                  <div className="flex sm:hidden items-center justify-between gap-1">
                     <button
                       onClick={() => handleEdit(category)}
-                      className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                      title="Edit"
+                      className="flex-1 py-1.5 text-xs font-medium text-amber-600 hover:bg-amber-50 rounded-lg transition-colors flex items-center justify-center gap-1"
                     >
-                      <PencilIcon className="w-4 h-4" />
+                      <PencilIcon className="w-3.5 h-3.5" />
+                      Edit
                     </button>
                     <button
                       onClick={() => setDeleteTarget(category)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                      title="Delete"
+                      className="flex-1 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center gap-1"
                     >
-                      <TrashIcon className="w-4 h-4" />
+                      <TrashIcon className="w-3.5 h-3.5" />
+                      Delete
                     </button>
                   </div>
-                  <span className="text-[10px] md:text-xs text-gray-400">
-                    {category.created_at
-                      ? new Date(category.created_at).toLocaleDateString(
-                          'en-IN',
-                          { day: 'numeric', month: 'short', year: 'numeric' }
-                        )
-                      : '-'}
-                  </span>
+
+                  {/* Desktop: original row with date */}
+                  <div className="hidden sm:flex items-center justify-between">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEdit(category)}
+                        className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                        title="Edit"
+                      >
+                        <PencilIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(category)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Delete"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <span className="text-[10px] md:text-xs text-gray-400">
+                      {category.created_at
+                        ? new Date(category.created_at).toLocaleDateString(
+                            'en-IN',
+                            { day: 'numeric', month: 'short', year: 'numeric' }
+                          )
+                        : '-'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -347,10 +392,10 @@ const AdminCategories = () => {
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md my-auto"
+              className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md my-auto max-h-[90vh] overflow-y-auto"
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-5 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
                     <FolderIcon className="w-5 h-5 text-amber-600" />
@@ -462,7 +507,7 @@ const AdminCategories = () => {
               </form>
 
               {/* Footer */}
-              <div className="flex gap-3 p-5 pt-0">
+              <div className="sticky bottom-0 bg-white flex gap-3 p-5 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={closeModal}
