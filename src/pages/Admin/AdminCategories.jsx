@@ -20,6 +20,64 @@ import {
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&h=400&fit=crop';
+
+// ==========================================
+// ✅ ROBUST IMAGE EXTRACTION
+// ==========================================
+const extractImageUrl = (image) => {
+  if (!image) return '';
+
+  if (typeof image === 'string') {
+    const url = image.trim().replace(/^["']|["']$/g, '');
+    return url
+      .replace(/^https\\:/i, 'https:')
+      .replace(/^http\\:/i, 'http:');
+  }
+
+  if (typeof image === 'object') {
+    return (
+      extractImageUrl(image.url) ||
+      extractImageUrl(image.secure_url) ||
+      extractImageUrl(image.src) ||
+      extractImageUrl(image.path) ||
+      ''
+    );
+  }
+
+  return '';
+};
+
+const getCategoryImageUrl = (category) => {
+  if (!category) return '';
+
+  const possibleImages = [
+    category.displayedImage,
+    category.originalImage,
+    category.image,
+    category.categoryImage,
+    category.imageUrl,
+    category.photo,
+    category.image_url,
+    category.imageUrlList?.[0],
+    category.images?.[0],
+  ];
+
+  for (const image of possibleImages) {
+    const url = extractImageUrl(image);
+    if (url) return url;
+  }
+
+  return '';
+};
+
+const getCategoryId = (category) =>
+  category?._id || category?.id || category?.categoryId;
+
+// ==========================================
+// MAIN
+// ==========================================
 const AdminCategories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +94,9 @@ const AdminCategories = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const fileInputRef = useRef(null);
 
+  // ==========================================
+  // FETCH
+  // ==========================================
   const fetchCategories = async () => {
     setLoading(true);
     try {
@@ -65,15 +126,18 @@ const AdminCategories = () => {
     try {
       const fd = new FormData();
       fd.append('name', formData.name.trim());
-      if (formData.description) fd.append('description', formData.description.trim());
+      if (formData.description)
+        fd.append('description', formData.description.trim());
       if (formData.image) fd.append('image', formData.image);
 
       const response = editingCategory
-        ? await adminUpdateCategory(editingCategory.id, fd)
+        ? await adminUpdateCategory(editingCategory.id || editingCategory._id, fd)
         : await adminCreateCategory(fd);
 
       if (response.success) {
-        toast.success(editingCategory ? 'Category updated' : 'Category created');
+        toast.success(
+          editingCategory ? 'Category updated' : 'Category created'
+        );
         closeModal();
         fetchCategories();
       } else {
@@ -92,7 +156,8 @@ const AdminCategories = () => {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     try {
-      const response = await adminDeleteCategory(deleteTarget.id);
+      const id = deleteTarget.id || deleteTarget._id;
+      const response = await adminDeleteCategory(id);
       if (response.success) {
         toast.success('Category deleted');
         setDeleteTarget(null);
@@ -113,18 +178,21 @@ const AdminCategories = () => {
       description: category.description || '',
       image: null,
     });
-    setImagePreview(category.image || '');
+    // Use robust extractor for preview
+    setImagePreview(getCategoryImageUrl(category));
     setShowModal(true);
   };
 
   // ==========================================
-  // IMAGE
+  // IMAGE UPLOAD
   // ==========================================
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) return toast.error('Select a valid image');
-    if (file.size > 5 * 1024 * 1024) return toast.error('Image must be under 5MB');
+    if (!file.type.startsWith('image/'))
+      return toast.error('Select a valid image');
+    if (file.size > 5 * 1024 * 1024)
+      return toast.error('Image must be under 5MB');
 
     setFormData((prev) => ({ ...prev, image: file }));
     const reader = new FileReader();
@@ -164,7 +232,8 @@ const AdminCategories = () => {
             Categories
           </h1>
           <p className="text-xs md:text-sm text-ink-500 mt-1.5">
-            {categories.length} {categories.length === 1 ? 'collection' : 'collections'}
+            {categories.length}{' '}
+            {categories.length === 1 ? 'collection' : 'collections'}
           </p>
         </div>
 
@@ -238,92 +307,100 @@ const AdminCategories = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-          {filteredCategories.map((category, index) => (
-            <motion.div
-              key={category.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(index * 0.04, 0.3) }}
-              className="group"
-            >
-              {/* Image — square, no overlay */}
-              <div className="relative aspect-square overflow-hidden rounded bg-cream-200 mb-3">
-                {category.image ? (
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    onError={(e) => {
-                      e.target.src =
-                        'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&h=400&fit=crop';
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <FolderIcon className="w-10 h-10 text-ink-300" />
+          {filteredCategories.map((category, index) => {
+            const categoryId = getCategoryId(category);
+            const imageUrl = getCategoryImageUrl(category);
+
+            return (
+              <motion.div
+                key={categoryId || index}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(index * 0.04, 0.3) }}
+                className="group"
+              >
+                {/* Image */}
+                <div className="relative aspect-square overflow-hidden rounded bg-cream-200 mb-3">
+                  {/* ✅ FIXED — uses robust extractor */}
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={category.name}
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => {
+                        if (e.target.dataset.fallback === 'true') return;
+                        e.target.dataset.fallback = 'true';
+                        e.target.src = FALLBACK_IMAGE;
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <FolderIcon className="w-10 h-10 text-ink-300" />
+                    </div>
+                  )}
+
+                  {/* Status badge */}
+                  <span
+                    className={`absolute top-3 right-3 px-2 py-0.5 rounded-sm text-[9px] uppercase tracking-wider font-bold ${
+                      category.is_active
+                        ? 'bg-ink-800 text-cream-100'
+                        : 'bg-cream-100 text-ink-500 border border-line'
+                    }`}
+                  >
+                    {category.is_active ? 'Active' : 'Inactive'}
+                  </span>
+
+                  {/* Hover quick actions */}
+                  <div className="hidden md:flex absolute top-3 left-3 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleEdit(category)}
+                      className="p-1.5 bg-cream-100/95 backdrop-blur-sm text-ink-700 hover:bg-ink-800 hover:text-cream-100 rounded transition-colors"
+                      aria-label="Edit"
+                    >
+                      <PencilIcon className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(category)}
+                      className="p-1.5 bg-cream-100/95 backdrop-blur-sm text-ink-700 hover:bg-red-500 hover:text-white rounded transition-colors"
+                      aria-label="Delete"
+                    >
+                      <TrashIcon className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                )}
-
-                {/* Status dot top-right */}
-                <span
-                  className={`absolute top-3 right-3 px-2 py-0.5 rounded-sm text-[9px] uppercase tracking-wider font-bold ${
-                    category.is_active
-                      ? 'bg-ink-800 text-cream-100'
-                      : 'bg-cream-100 text-ink-500 border border-line'
-                  }`}
-                >
-                  {category.is_active ? 'Active' : 'Inactive'}
-                </span>
-
-                {/* Hover quick actions (desktop) */}
-                <div className="hidden md:flex absolute top-3 left-3 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => handleEdit(category)}
-                    className="p-1.5 bg-cream-100/95 backdrop-blur-sm text-ink-700 hover:bg-ink-800 hover:text-cream-100 rounded transition-colors"
-                    aria-label="Edit"
-                  >
-                    <PencilIcon className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(category)}
-                    className="p-1.5 bg-cream-100/95 backdrop-blur-sm text-ink-700 hover:bg-red-500 hover:text-white rounded transition-colors"
-                    aria-label="Delete"
-                  >
-                    <TrashIcon className="w-3.5 h-3.5" />
-                  </button>
                 </div>
-              </div>
 
-              {/* Content */}
-              <div>
-                <h3 className="text-sm md:text-base font-medium text-ink-800 group-hover:text-burgundy-500 transition-colors line-clamp-1">
-                  {category.name}
-                </h3>
+                {/* Content */}
+                <div>
+                  <h3 className="text-sm md:text-base font-medium text-ink-800 group-hover:text-burgundy-500 transition-colors line-clamp-1">
+                    {category.name}
+                  </h3>
 
-                {category.description && (
-                  <p className="hidden md:block text-xs text-ink-500 line-clamp-1 mt-1">
-                    {category.description}
-                  </p>
-                )}
+                  {category.description && (
+                    <p className="hidden md:block text-xs text-ink-500 line-clamp-1 mt-1">
+                      {category.description}
+                    </p>
+                  )}
 
-                {/* Mobile quick actions */}
-                <div className="flex md:hidden items-center gap-1 mt-2.5 pt-2.5 border-t border-line">
-                  <button
-                    onClick={() => handleEdit(category)}
-                    className="flex-1 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-ink-700 hover:bg-cream-100 rounded transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(category)}
-                    className="flex-1 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-red-500 hover:bg-red-50 rounded transition-colors"
-                  >
-                    Delete
-                  </button>
+                  {/* Mobile actions */}
+                  <div className="flex md:hidden items-center gap-1 mt-2.5 pt-2.5 border-t border-line">
+                    <button
+                      onClick={() => handleEdit(category)}
+                      className="flex-1 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-ink-700 hover:bg-cream-100 rounded transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(category)}
+                      className="flex-1 py-1.5 text-[10px] uppercase tracking-wider font-semibold text-red-500 hover:bg-red-50 rounded transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
@@ -353,7 +430,9 @@ const AdminCategories = () => {
                     {editingCategory ? 'Edit' : 'New'}
                   </p>
                   <h3 className="font-serif text-lg font-bold text-ink-800">
-                    {editingCategory ? 'Update Category' : 'Create Category'}
+                    {editingCategory
+                      ? 'Update Category'
+                      : 'Create Category'}
                   </h3>
                 </div>
                 <button
@@ -390,7 +469,10 @@ const AdminCategories = () => {
                   <textarea
                     value={formData.description}
                     onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
+                      setFormData({
+                        ...formData,
+                        description: e.target.value,
+                      })
                     }
                     rows="3"
                     className="w-full px-3.5 py-2.5 bg-cream-100 border border-line rounded focus:border-ink-800 outline-none transition-colors text-sm resize-none"
@@ -409,6 +491,10 @@ const AdminCategories = () => {
                           src={imagePreview}
                           alt="Preview"
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.dataset.fallback = 'true';
+                            e.target.src = FALLBACK_IMAGE;
+                          }}
                         />
                         <button
                           type="button"

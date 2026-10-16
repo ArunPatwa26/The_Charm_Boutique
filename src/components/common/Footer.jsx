@@ -8,8 +8,8 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   const contactInfo = {
-    email: 'thecharmboutique@gmail.com',
-    phone: '+91 98765 43210',
+    email: 'thecharmboutique.in@gmail.com',
+    phone: '+91 8169555811',
     location: 'Mumbai, India',
     instagram: 'https://www.instagram.com/_the.charm.boutique_/?hl=en',
   };

@@ -16,6 +16,64 @@ import ProductCard from '../../components/products/ProductCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Hero from '../../components/home/Hero';
 
+// ==========================================
+// ✅ ROBUST IMAGE EXTRACTION (matches other pages)
+// ==========================================
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=400&h=400&fit=crop';
+
+const extractImageUrl = (image) => {
+  if (!image) return '';
+
+  if (typeof image === 'string') {
+    const url = image.trim().replace(/^["']|["']$/g, '');
+    return url
+      .replace(/^https\\:/i, 'https:')
+      .replace(/^http\\:/i, 'http:');
+  }
+
+  if (typeof image === 'object') {
+    return (
+      extractImageUrl(image.url) ||
+      extractImageUrl(image.secure_url) ||
+      extractImageUrl(image.src) ||
+      extractImageUrl(image.path) ||
+      ''
+    );
+  }
+
+  return '';
+};
+
+const getCategoryImageUrl = (category) => {
+  if (!category) return '';
+
+  const possibleImages = [
+    category.displayedImage,
+    category.originalImage,
+    category.image,
+    category.categoryImage,
+    category.imageUrl,
+    category.photo,
+    category.image_url,
+    category.imageUrlList?.[0],
+    category.images?.[0],
+  ];
+
+  for (const image of possibleImages) {
+    const url = extractImageUrl(image);
+    if (url) return url;
+  }
+
+  return '';
+};
+
+const getCategoryId = (category) =>
+  category?._id || category?.id || category?.categoryId;
+
+// ==========================================
+// HOME PAGE
+// ==========================================
 const HomePage = () => {
   const { user } = useAuth();
   const [categories, setCategories] = useState([]);
@@ -23,6 +81,9 @@ const HomePage = () => {
   const [trending, setTrending] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // ==========================================
+  // FETCH
+  // ==========================================
   useEffect(() => {
     window.scrollTo(0, 0);
 
@@ -33,12 +94,37 @@ const HomePage = () => {
           getCategories(),
           getTrendingProducts(),
         ]);
-        if (catRes?.success) setCategories(catRes.categories || []);
-        if (trendingRes?.success) setTrending(trendingRes.trending || []);
+
+        // Support multiple response shapes
+        const categoryList = Array.isArray(catRes)
+          ? catRes
+          : Array.isArray(catRes?.categories)
+          ? catRes.categories
+          : Array.isArray(catRes?.data?.categories)
+          ? catRes.data.categories
+          : Array.isArray(catRes?.data)
+          ? catRes.data
+          : [];
+
+        const trendingList = Array.isArray(trendingRes)
+          ? trendingRes
+          : Array.isArray(trendingRes?.trending)
+          ? trendingRes.trending
+          : Array.isArray(trendingRes?.data?.trending)
+          ? trendingRes.data.trending
+          : [];
+
+        setCategories(categoryList);
+        setTrending(trendingList);
 
         if (user?.id) {
           const aiRes = await getAIRecommendations(user.id);
-          if (aiRes?.success) setRecommendations(aiRes.recommendations || []);
+          const aiList = Array.isArray(aiRes?.recommendations)
+            ? aiRes.recommendations
+            : Array.isArray(aiRes?.data)
+            ? aiRes.data
+            : [];
+          setRecommendations(aiList);
         }
       } catch (error) {
         console.error('Home data error:', error);
@@ -91,27 +177,7 @@ const HomePage = () => {
           ) : categories.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
               {categories.slice(0, 6).map((cat, i) => (
-                <motion.div
-                  key={cat.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i * 0.05, 0.3) }}
-                  viewport={{ once: true }}
-                >
-                  <Link to={`/categories/${cat.id}`} className="group block">
-                    <div className="aspect-square overflow-hidden rounded-lg bg-cream-200 mb-3">
-                      <img
-                        src={cat.image || 'https://via.placeholder.com/400'}
-                        alt={cat.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    </div>
-                    <p className="text-sm font-medium text-ink-800 group-hover:text-burgundy-500 transition-colors line-clamp-1">
-                      {cat.name}
-                    </p>
-                  </Link>
-                </motion.div>
+                <CategoryCard key={getCategoryId(cat) || i} category={cat} index={i} />
               ))}
             </div>
           ) : (
@@ -157,7 +223,7 @@ const HomePage = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {trending.slice(0, 4).map((product, i) => (
                 <motion.div
-                  key={product.id}
+                  key={product.id || i}
                   initial={{ opacity: 0, y: 16 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.06, 0.3) }}
@@ -269,7 +335,7 @@ const HomePage = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {recommendations.slice(0, 4).map((product, i) => (
                 <motion.div
-                  key={product.id}
+                  key={product.id || i}
                   initial={{ opacity: 0, y: 16 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.06, 0.3) }}
@@ -317,7 +383,7 @@ const HomePage = () => {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {trending.slice(0, 4).map((product, i) => (
                 <motion.div
-                  key={product.id}
+                  key={product.id || i}
                   initial={{ opacity: 0, y: 16 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.06, 0.3) }}
@@ -386,6 +452,46 @@ const HomePage = () => {
         </div>
       </section>
     </div>
+  );
+};
+
+// ==========================================
+// CATEGORY CARD (with fallback + multi-field support)
+// ==========================================
+const CategoryCard = ({ category, index }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const categoryId = getCategoryId(category);
+  const imageUrl = getCategoryImageUrl(category);
+
+  const finalImageUrl =
+    !imageFailed && imageUrl ? imageUrl : FALLBACK_IMAGE;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.05, 0.3) }}
+      viewport={{ once: true }}
+    >
+      <Link to={`/categories/${categoryId}`} className="group block">
+        <div className="aspect-square overflow-hidden rounded-lg bg-cream-200 mb-3">
+          <img
+            src={finalImageUrl}
+            alt={category.name || 'Category'}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={() => {
+              if (!imageFailed) setImageFailed(true);
+            }}
+          />
+        </div>
+        <p className="text-sm font-medium text-ink-800 group-hover:text-burgundy-500 transition-colors line-clamp-1">
+          {category.name}
+        </p>
+      </Link>
+    </motion.div>
   );
 };
 
